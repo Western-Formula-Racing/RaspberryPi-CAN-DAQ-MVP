@@ -5,6 +5,8 @@ name = "pypi"
 
 [packages]
 python-can = "*"
+influxdb-client = "*"
+influxdb = "*"
 
 [dev-packages]
 
