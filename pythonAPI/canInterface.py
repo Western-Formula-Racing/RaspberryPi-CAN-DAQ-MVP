@@ -2,6 +2,7 @@ import can
 import os
 from influxdb import InfluxDBClient
 import datetime
+import paho.mqtt.client as mqtt
 
 # influxDb config
 ifuser = "grafana"
@@ -13,6 +14,25 @@ graphName = "SensorBoard1"
 ifclient = InfluxDBClient(host='127.0.0.1', port=8086,
                           username='grafana', password='admin', database='home')
 
+
+# MQTT publisher setup
+clientName = "daq"
+
+
+def on_connect(client, userdata, flags, rc):
+    print("Connected with result code "+str(rc))
+
+
+def on_publish(client, userdata, result):
+    print("data published")
+    pass
+
+
+mqttClient = mqtt.Client(clientName)
+mqttClient.on_connect = on_connect
+mqttClient.on_publish = on_publish
+
+mqttClient.connect("localhost")
 
 # CAN Bus stuff
 filters = [
@@ -50,6 +70,14 @@ for msg in bus:
         }
     ]
     ifclient.write_points(body)
+    mqttClient.publish("SensorBoard1/sensor1", hub1[0])
+    mqttClient.publish("SensorBoard1/sensor2", hub1[1])
+    mqttClient.publish("SensorBoard1/sensor3", hub1[2])
+    mqttClient.publish("SensorBoard1/sensor4", hub1[3])
+    mqttClient.publish("SensorBoard1/sensor5", hub1[4])
+    mqttClient.publish("SensorBoard1/sensor6", hub1[5])
+    mqttClient.publish("SensorBoard1/sensor7", hub1[6])
+    mqttClient.publish("SensorBoard1/sensor8", hub1[7])
     print("Sensor Hub 1:")
     for i, sensorValue in enumerate(hub1):
         print(f"Sensor {i+1}: {sensorValue}")
