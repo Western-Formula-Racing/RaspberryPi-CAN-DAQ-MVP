@@ -1,5 +1,6 @@
 # RaspberryPi-CAN-DAQ-MVP
 A minimum viable product (MVP) to serve as a proof of concept for the intended WFR 2023 data acquisition system (DAQ) 
+![image](https://user-images.githubusercontent.com/25854486/209480355-1d6d6520-5e73-4ade-936d-d53ffd8260fb.png)
 
 ## Raspberry Pi setup
 ### Hardware
