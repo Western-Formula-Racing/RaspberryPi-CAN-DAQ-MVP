@@ -98,6 +98,30 @@ create user grafana with password 'Admin' with all privileges
 grant all privileges on home to grafana
 ```
 We can check it worked by running `show users` in the client. That's it for influx. you can choose a different password and username, just make sure to update the `canInterface.py` file if you choose to do so. 
+#### Mosuitto MQTT Broker
+While having the data stored in InfluxDB is great for persistant time series data, it doesn't give truly "live" data feeds. Grafana uses data base query's to grab the information to display. In order to achieve reasonable performance, the number of queries is limited to once per second. While this is perfectly fine for reviewing data, it would be nice to be able to watch the data in "real time". MQTT is a messaging protocol based on Websockets that allows for real time telemetry, so I've made it so that all sensor data is published to a [Mosquitto MQTT client](https://mosquitto.org/) as well on the RPi so that Grafana can stream it in real time. 
+**Disclaimer**: This barely works currently, it will show up for a few seconds then disapear, I'm not sure why but it's still in the script so the installation needs to be complete for things to work properly. 
+
+
+CD to the home directory in the terminal and run:
+```
+sudo apt update && sudo apt upgrade
+```
+Then we can install the Mosquitto broker and client using:
+```
+sudo apt install -y mosquitto mosquitto-clients
+```
+Then we can make sure it runs on boot by running:
+```
+sudo systemctl enable mosquitto.service
+```
+To check that it's running we can run:
+```
+mosquitto -v
+```
+you will get some errors about the address already being in use, that's all good. 
+
+
 
 #### Grafana
 Add the packages to apt:
@@ -115,7 +139,23 @@ sudo systemctl unmask grafana-server.service
 sudo systemctl start grafana-server
 sudo systemctl enable grafana-server.service
 ```
+Now Grafana is installed and you can open it in the web browser by going to http://localhost:3000/ (assuming nothing else is on port 3000). The default login is `admin` for both the username and password. You can then click on the settings button, find "Data sources" and click "add new data source" to add the InfluxDB and MQTT sources. 
 
-***And that's it!*** Everything is setup to allow you to run the script and play with the data output in Grafana (setup not exaplined here yet because I haven't quite figured it out. 
+For Influx, the support is already built in so you should be able to just search for it, and enter the following:
+
+<img src="https://user-images.githubusercontent.com/25854486/209479955-89b4b1fb-8af7-4cca-8bb7-10e547610ada.png" width="400">
+<img src="https://user-images.githubusercontent.com/25854486/209479961-64395159-d50a-4bab-9f40-582973fbbdd4.png" width="400">
+
+For MQTT you will need to add the MQTT Plugin, back on the settings button, you can click plugins and search for it in the list and install it. Once you do that, you should be able to add it as a data source as follows:
+
+<img src="https://user-images.githubusercontent.com/25854486/209480004-c10ff979-f353-449c-81c2-f594982af316.png" width="400">
+
+
+Now if you want to mess around with Grafana yourself, feel free to read the [documentation](https://grafana.com/docs/grafana/latest/) and try setting up your own dashboard, but to use the one I created for this demo, you can import the json from the `grafana_template` folder in this repository. 
+
+<img src="https://user-images.githubusercontent.com/25854486/209480115-d163f9af-2863-4ef7-b497-0a0b2e577628.png" width="400">
+
+
+***And that's it!*** Everything is setup to allow you to run the script and play with the data output in Grafana 
 
 Was this documentation over the top? yes. The goal of this project was to serve as the starting point for a more fully fleshed DAQ system, so I wanted all the setup instructions setup in 1 place to make it easier to fork and work on new versions without spending hours just trying to figure out what needs to be installed.  
