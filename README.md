@@ -65,8 +65,8 @@ once you have pipenv, you can now clone this project. In the terminal, navigate 
 ```
  pipenv install
 ```
-### InfluxDB & Grafana
-One final step before we can run this program, we will need to install and setup InfluxDB on the RPi. Looking at the offical documeation, 3 Series RPi's and RPi's running 32bit operating systems aren't supported.....however this seemed to work just fine [following this tutorial](https://simonhearne.com/2020/pi-influx-grafana/). The summary of the steps is as follows:
+### Databases and Data Visualization 
+Before we can run this program, we will need to install and setup InfluxDB on the RPi. Looking at the offical documeation, 3 Series RPi's and RPi's running 32bit operating systems aren't supported.....however this seemed to work just fine [following this tutorial](https://simonhearne.com/2020/pi-influx-grafana/). The summary of the steps is as follows:
 #### InfluxDB
 First we need to update our package list and upgrade all our out of date packages. We can do this using the following terminal commands:
 ```
@@ -99,6 +99,7 @@ create user grafana with password 'Admin' with all privileges
 grant all privileges on home to grafana
 ```
 We can check it worked by running `show users` in the client. That's it for influx. you can choose a different password and username, just make sure to update the `canInterface.py` file if you choose to do so. 
+
 #### Mosuitto MQTT Broker
 While having the data stored in InfluxDB is great for persistant time series data, it doesn't give truly "live" data feeds. Grafana uses data base query's to grab the information to display. In order to achieve reasonable performance, the number of queries is limited to once per second. While this is perfectly fine for reviewing data, it would be nice to be able to watch the data in "real time". MQTT is a messaging protocol based on Websockets that allows for real time telemetry, so I've made it so that all sensor data is published to a [Mosquitto MQTT client](https://mosquitto.org/) as well on the RPi so that Grafana can stream it in real time. 
 **Disclaimer**: This barely works currently, it will show up for a few seconds then disapear, I'm not sure why but it's still in the script so the installation needs to be complete for things to work properly. 
