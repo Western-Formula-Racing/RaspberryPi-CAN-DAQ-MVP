@@ -40,19 +40,21 @@ filters = [
     {"can_id": 0x036, "can_mask": 0xFFF, "extended": False}
 ]
 # start an interface using the socketcan interface, using the can0 physical device at a 500KHz frequency with the above filters
-bus = can.interface.Bus(bustype='socketcan', channel='can0',
-                        bitrate=500000, can_filters=filters)
+bus = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=500000, can_filters=filters)
 
 # Use the virtual CAN interface in lieu of a physical connection 
-# bus = can.interface.Bus(bustype='socketcan', channel='vcan0', can_filters=filters)
+#bus = can.interface.Bus(bustype='socketcan', channel='vcan0', can_filters=filters)
 
 print("reading Can Bus:")
 for msg in bus:
     os.system('clear')
     hub1 = [0 for x in range(8)]
     if msg.arbitration_id == 54:
-        for i in range(8):
-            hub1[i] = msg.data[i]
+        if len(msg.data) > 8 or len(msg.data) < 0: 
+            # not really possible if the MTU of the CAN interface is less than or equal to 16
+            raise ValueError("Invalid message size")
+        for i, byte in enumerate(msg.data):
+            hub1[i] = byte
     time = datetime.datetime.utcnow()
     body = [
         {
