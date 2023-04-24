@@ -43,6 +43,9 @@ filters = [
 bus = can.interface.Bus(bustype='socketcan', channel='can0',
                         bitrate=500000, can_filters=filters)
 
+# Use the virtual CAN interface in lieu of a physical connection 
+# bus = can.interface.Bus(bustype='socketcan', channel='vcan0', can_filters=filters)
+
 print("reading Can Bus:")
 for msg in bus:
     os.system('clear')
