@@ -40,10 +40,10 @@ filters = [
     {"can_id": 0x036, "can_mask": 0xFFF, "extended": False}
 ]
 # start an interface using the socketcan interface, using the can0 physical device at a 500KHz frequency with the above filters
-#bus = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=500000, can_filters=filters)
+bus = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=500000, can_filters=filters)
 
 # Use the virtual CAN interface in lieu of a physical connection 
-bus = can.interface.Bus(bustype='socketcan', channel='vcan0', can_filters=filters)
+#bus = can.interface.Bus(bustype='socketcan', channel='vcan0', can_filters=filters)
 
 print("reading Can Bus:")
 for msg in bus:
