@@ -24,12 +24,12 @@ The pin connection is as follows:
 
 ### Drivers
 #### SocketCAN 
-This project heavily relies on [SocketCAN](https://docs.kernel.org/networking/can.html) which from my understanding is the Linux kernels default CAN Bus interface implementation, that aims to treat CAN Bus interface devices similar to regular network devices and mimic the TCP/IP protocol to make it easier to use. It also natively supports MCP2515 based controllers. Since this is built in, nothing needs to be installed, however the `/boot/config.text` needs to have the following line appended to it:
+This project heavily relies on [SocketCAN](https://docs.kernel.org/networking/can.html) which from my understanding is the Linux kernel's default CAN Bus interface implementation, that aims to treat CAN Bus interface devices similar to regular network devices and mimic the TCP/IP protocol to make it easier to use. It also natively supports MCP2515 based controllers. Since this is built in, nothing needs to be installed, however the `/boot/config.text` needs to have the following line appended to it:
 ```
 dtoverlay=mcp2515-can0,oscillator=8000000,interrupt=25 
 ```
-This gets the Linux kernel to automatically discover the CAN Controller on the SPI interface. If your interface pin has a different oscilator frequency, you can change that here. 
-Now reboot the Pi and check the kernel messsages (you can bring this up in the terminal by using the command: `dmesg | grep spi)` or `dmesg` to view all kernal messages), and you should see the following:
+This gets the Linux kernel to automatically discover the CAN Controller on the SPI interface. If your interface pin has a different oscillator frequency, you can change that here. 
+Now reboot the Pi and check the kernel messsages (you can bring this up in the terminal by using the command: `dmesg | grep spi)` or `dmesg` to view all kernel messages), and you should see the following:
 ```
 [    8.050044] mcp251x spi0.0 can0: MCP2515 successfully initialized.
 ```
@@ -37,7 +37,7 @@ Finally, to enable the CAN Interface run the following in the terminal:
 ```
  sudo /sbin/ip link set can0 up type can bitrate 500000 
 ```
-If you are using a different bitrate on your CAN Bus, you can change the value. You will need to run this command after every reboot, however you can set it to run automatically on startup by appending the following to the `/etc/netwrok/interfaces` file:
+If you are using a different bitrate on your CAN Bus, you can change the value. You will need to run this command after every reboot, however you can set it to run automatically on startup by appending the following to the `/etc/network/interfaces` file:
 ```
 auto can0
 iface can0 inet manual
@@ -45,7 +45,7 @@ iface can0 inet manual
     up /sbin/ifconfig can0 up
     down /sbin/ifconfig can0 down
 ```
-And that's everything to get the CAN Bus interface working! Since SocketCAN acts like a regular network device, we can get some statistic information by using the `ifconfig` terminal command. 
+And that's everything to get the CAN Bus interface working! Since SocketCAN acts like a regular network device, we can get some statistic information by using the `ifconfig` terminal command, which can be obtained with the `net-tools` package using `sudo apt-get install net-tools`. 
 #### CAN-utils
 [CAN-utils](https://github.com/linux-can/can-utils#basic-tools-to-display-record-generate-and-replay-can-traffic) is a set of super useful CAN debugging tools for the SocketCAN inteface. You can install it using the following command:
 ```
@@ -55,7 +55,7 @@ This allows us to dump CAN Bus traffic to logs, send test messages and simulate 
 
 
 ## Project Setup
-If you don't have the required hardware, fret not. You there is a way to set up a virutal CAN interface using SocketCAN and send traffic on it using CAN-utils. However i haven't done this so you will need to do some research on how to do that before moving onto the next step. 
+If you don't have the required hardware, fret not. You there is a way to set up a virutal CAN interface using SocketCAN and send traffic on it using CAN-utils. Navigate to [Virtual CAN Datastream Generation](#virtual-can-datastream-generation) for more information.
 
 The Python script for this project uses [pipenv](https://pipenv.pypa.io/en/latest/) to manage the required python packages, so you will need that installed. Run the following command in your root directory in the terminal: 
 ```
@@ -66,7 +66,7 @@ once you have pipenv, you can now clone this project. In the terminal, navigate 
  pipenv install
 ```
 ### Databases and Data Visualization 
-Before we can run this program, we will need to install and setup InfluxDB on the RPi. Looking at the offical documeation, 3 Series RPi's and RPi's running 32bit operating systems aren't supported.....however this seemed to work just fine [following this tutorial](https://simonhearne.com/2020/pi-influx-grafana/). The summary of the steps is as follows:
+Before we can run this program, we will need to install and setup InfluxDB on the RPi. Looking at the offical documeation, 3 Series RPi's and RPi's running 32-bit operating systems aren't supported... however this seemed to work just fine [following this tutorial](https://simonhearne.com/2020/pi-influx-grafana/). The summary of the steps is as follows:
 #### InfluxDB
 First we need to update our package list and upgrade all our out of date packages. We can do this using the following terminal commands:
 ```
@@ -101,7 +101,7 @@ grant all privileges on home to grafana
 We can check it worked by running `show users` in the client. That's it for influx. you can choose a different password and username, just make sure to update the `canInterface.py` file if you choose to do so. 
 
 #### Mosuitto MQTT Broker
-While having the data stored in InfluxDB is great for persistant time series data, it doesn't give truly "live" data feeds. Grafana uses data base query's to grab the information to display. In order to achieve reasonable performance, the number of queries is limited to once per second. While this is perfectly fine for reviewing data, it would be nice to be able to watch the data in "real time". MQTT is a messaging protocol based on Websockets that allows for real time telemetry, so I've made it so that all sensor data is published to a [Mosquitto MQTT client](https://mosquitto.org/) as well on the RPi so that Grafana can stream it in real time. 
+While having the data stored in InfluxDB is great for persistant time series data, it doesn't give truly "live" data feeds. Grafana uses database queries to grab the information to display. In order to achieve reasonable performance, the number of queries is limited to once per second. While this is perfectly fine for reviewing data, it would be nice to be able to watch the data in "real time". MQTT is a messaging protocol based on Websockets that allows for real time telemetry, so I've made it so that all sensor data is published to a [Mosquitto MQTT client](https://mosquitto.org/) as well on the RPi so that Grafana can stream it in real time. 
 **Disclaimer**: This barely works currently, it will show up for a few seconds then disapear, I'm not sure why but it's still in the script so the installation needs to be complete for things to work properly. 
 
 
@@ -161,3 +161,8 @@ Now if you want to mess around with Grafana yourself, feel free to read the [doc
 ***And that's it!*** Everything is setup to allow you to run the script and play with the data output in Grafana 
 
 Was this documentation over the top? yes. The goal of this project was to serve as the starting point for a more fully fleshed DAQ system, so I wanted all the setup instructions setup in 1 place to make it easier to fork and work on new versions without spending hours just trying to figure out what needs to be installed.  
+
+## Virtual CAN Datastream Generation
+If you don't have the hardware, you can still generate a reliable datastream and build a DAQ testbed, right from the comfort of your own virtual machine. This uses virtual CAN interfaces provided by the SocketCAN Linux module to mimick a physical CAN controller, combined with tools from `can-utils` to generate the datastream.  
+
+To keep this document short, see the other document: [VIRTUAL_DATASTREAM_GENERATION.md](VIRTUAL_DATASTREAM_GENERATION.md).

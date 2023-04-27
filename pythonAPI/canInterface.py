@@ -3,6 +3,7 @@ import os
 from influxdb import InfluxDBClient
 import datetime
 import paho.mqtt.client as mqtt
+from idMaps import CAN_ID_TO_SENSOR_BOARD_LUT
 
 # influxDb config
 ifuser = "grafana"
@@ -40,35 +41,36 @@ filters = [
     {"can_id": 0x036, "can_mask": 0xFFF, "extended": False}
 ]
 # start an interface using the socketcan interface, using the can0 physical device at a 500KHz frequency with the above filters
-bus = can.interface.Bus(bustype='socketcan', channel='can0',
-                        bitrate=500000, can_filters=filters)
+#bus = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=500000, can_filters=filters)
+
+# Use the virtual CAN interface in lieu of a physical connection 
+bus = can.interface.Bus(bustype='socketcan', channel='vcan0', can_filters=filters)
 
 print("reading Can Bus:")
 for msg in bus:
-    os.system('clear')
+    #os.system('clear')
+
     hub1 = [0 for x in range(8)]
-    if msg.arbitration_id == 54:
-        for i in range(8):
-            hub1[i] = msg.data[i]
+
+    if msg.arbitration_id == 0x36: 
+        if len(msg.data) > 8 or len(msg.data) < 0: 
+            # not really possible if the MTU of the CAN interface is less than or equal to 16
+            raise ValueError("Invalid message size")
+        for i, byte in enumerate(msg.data):
+            hub1[i] = byte
+
     time = datetime.datetime.utcnow()
-    body = [
-        {
-            "measurement": graphName,
-            "time": time,
 
-            "fields": {
-                "Sensor 1": hub1[0],
-                "Sensor 2": hub1[1],
-                "Sensor 3": hub1[2],
-                "Sensor 4": hub1[3],
-                "Sensor 5": hub1[4],
-                "Sensor 6": hub1[5],
-                "Sensor 7": hub1[6],
-                "Sensor 8": hub1[7],
+    body = [{ # I don't know why this object is an array https://influxdb-python.readthedocs.io/en/latest/examples.html
+        "measurement": CAN_ID_TO_SENSOR_BOARD_LUT[msg.arbitration_id]["board_name"],
+        "time": time,
+        "fields": {}
+    }]
 
-            }
-        }
-    ]
+    for i, sensors in enumerate(CAN_ID_TO_SENSOR_BOARD_LUT[msg.arbitration_id]["sensors"]):
+        print("this is sensors:")
+        body[0]["fields"][sensors["sensor_name"]] = hub1[i]
+
     ifclient.write_points(body)
     mqttClient.publish("SensorBoard1/sensor1", hub1[0])
     mqttClient.publish("SensorBoard1/sensor2", hub1[1])
@@ -78,7 +80,9 @@ for msg in bus:
     mqttClient.publish("SensorBoard1/sensor6", hub1[5])
     mqttClient.publish("SensorBoard1/sensor7", hub1[6])
     mqttClient.publish("SensorBoard1/sensor8", hub1[7])
+
     print("Sensor Hub 1:")
-    for i, sensorValue in enumerate(hub1):
-        print(f"Sensor {i+1}: {sensorValue}")
+    for sensors in body[0]["fields"]:
+        print(f"{sensors}: {body[0]['fields'][sensors]}")
+    
     print("\r")
