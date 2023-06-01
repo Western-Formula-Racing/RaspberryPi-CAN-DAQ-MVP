@@ -1,9 +1,13 @@
 import can
+import cantools
+import asyncio
+from typing import List
 import os
 from influxdb import InfluxDBClient
 import datetime
 import paho.mqtt.client as mqtt
 from idMaps import CAN_ID_TO_SENSOR_BOARD_LUT
+from can.notifier import MessageRecipient
 
 # influxDb config
 ifuser = "grafana"
@@ -15,10 +19,13 @@ graphName = "SensorBoard1"
 ifclient = InfluxDBClient(host='127.0.0.1', port=8086,
                           username='grafana', password='admin', database='home')
 
+db = cantools.database.load_file('dbc/demo_sensorboard.dbc')
+
+print("db messages:")
+print(db.messages)
 
 # MQTT publisher setup
 clientName = "daq"
-
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
@@ -35,55 +42,61 @@ mqttClient.on_publish = on_publish
 
 mqttClient.connect("localhost", 1883)
 
+
 # CAN Bus stuff
+def decode_and_broadcast(msg: can.Message) -> None:
+    print(msg)
+    print("Just printed\n")
+        # decoded = self.messageFormat.message_decode(msg.arbitration_id, msg.data)
+        # board_name = self.messageFormat.get_message_by_frame_id(msg.arbitration_id).name
+        # body = [{ # I don't know why this object is an array https://influxdb-python.readthedocs.io/en/latest/examples.html
+        #     "measurement": board_name, 
+        #     "time": datetime.datetime.utcnow(),
+        #     "fields": decoded
+        # }]
+        # self.ifClient.write_points(body)
+        # for reading in decoded:
+        #     mqttStr = f"{board_name}/{reading}"
+        #     self.mqttClient.publish(mqttStr, decoded[reading])
+
+
 filters = [
     # the mask is applied to the filter to determine which bits in the ID to check (https://forum.arduino.cc/t/filtering-and-masking-in-can-bus/586068/3)
     {"can_id": 0x036, "can_mask": 0xFFF, "extended": False},
     {"can_id": 0x023, "can_mask": 0xFFF, "extended": False}
 ]
 # start an interface using the socketcan interface, using the can0 physical device at a 500KHz frequency with the above filters
-#bus = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=500000, can_filters=filters)
 
 # Use the virtual CAN interface in lieu of a physical connection 
-bus = can.interface.Bus(bustype='socketcan', channel='vcan0', can_filters=filters)
+bus_one = can.interface.Bus(bustype='socketcan', channel='vcan0')
+bus_two = can.interface.Bus(bustype='socketcan', channel='vcan1')
 
-print("reading Can Bus:")
-for msg in bus:
-    #os.system('clear')
+async def main() -> None:
+    bus_one_reader = can.AsyncBufferedReader()
+    bus_two_reader = can.AsyncBufferedReader()
+    logger = can.Logger("logfile.asc")
 
-    hub_data = [0 for x in range(8)]
-    hub_no = 0
+    bus_one_listeners: List[MessageRecipient] = [
+        decode_and_broadcast,  # Callback function
+        bus_one_reader,  # AsyncBufferedReader() listener
+        logger,  # Regular Listener object
+    ]
 
-    if msg.arbitration_id == 0x36 or msg.arbitration_id == 0x23: 
-        if len(msg.data) > 8 or len(msg.data) < 0: 
-            # not really possible if the MTU of the CAN interface is less than or equal to 16
-            raise ValueError("Invalid message size")
-        if msg.arbitration_id == 0x36:
-            hub_no = 2
-        else: 
-            hub_no = 1
-        for i, byte in enumerate(msg.data):
-            hub_data[i] = byte
+    bus_two_listeners: List[MessageRecipient] = [
+        decode_and_broadcast,  # Callback function
+        bus_two_reader,  # AsyncBufferedReader() listener
+        logger,  # Regular Listener object
+    ]
 
-    time = datetime.datetime.utcnow()
-    this_board_name = CAN_ID_TO_SENSOR_BOARD_LUT[msg.arbitration_id]["board_name"]
-    body = [{ # I don't know why this object is an array https://influxdb-python.readthedocs.io/en/latest/examples.html
-        "measurement": this_board_name,
-        "time": time,
-        "fields": {}
-    }]
+    # Create Notifier with an explicit loop to use for scheduling of callbacks
+    loop = asyncio.get_running_loop()
+    notifier_bus_one = can.Notifier(bus_one, bus_one_listeners, loop=loop)
+    notifier_bus_two = can.Notifier(bus_two, bus_two_listeners, loop=loop)
 
-    for i, sensors in enumerate(CAN_ID_TO_SENSOR_BOARD_LUT[msg.arbitration_id]["sensors"]):
-        this_sensor_name = sensors["sensor_name"] # constant lookup bc hashmap i think so doesnt matter but more readable  
-        body[0]["fields"][this_sensor_name] = hub_data[i]
-        # "SensorBoardN/sensorM"
-        mqtt_str = f"{this_board_name}/{this_sensor_name}"
-        mqttClient.publish(mqtt_str, hub_data[i])
-        
-    ifclient.write_points(body)
+    while True:
+        msg = await bus_one_reader.get_message()
+        msg = await bus_two_reader.get_message()
 
-    print(f"Sensor Hub {hub_no}:")
-    for sensors in body[0]["fields"]:
-        print(f"{sensors}: {body[0]['fields'][sensors]}")
-    
-    print("\r")
+
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -153,7 +153,7 @@ For MQTT you will need to add the MQTT Plugin, back on the settings button, you 
 <img src="https://user-images.githubusercontent.com/25854486/209480004-c10ff979-f353-449c-81c2-f594982af316.png" width="400">
 
 
-Now if you want to mess around with Grafana yourself, feel free to read the [documentation](https://grafana.com/docs/grafana/latest/) and try setting up your own dashboard, but to use the one I created for this demo, you can import the json from the `grafana_template` folder in this repository. 
+Now if you want to mess around with Grafana yourself, feel free to read the [documentation](https://grafana.com/docs/grafana/latest/) and try setting up your own dashboard, but to use the one I created for this demo, you can import the json from the `grafana_template` folder in this repository. **Note:** if importing a template before setting up data generation (whether virtual or real), you will get error triangles in Grafana indicating such. Ignore them and set up the data generation source; things will be fixed. 
 
 <img src="https://user-images.githubusercontent.com/25854486/209480115-d163f9af-2863-4ef7-b497-0a0b2e577628.png" width="400">
 
