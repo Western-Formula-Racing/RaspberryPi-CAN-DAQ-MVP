@@ -50,12 +50,14 @@ Firstly, the CAN protocol specified for use in `canInterface` takes only CAN fra
 
 **[Optional theory for further conceptual clarification, feel free to skip paragraph]** These filters will eventually route down the chain of abstraction into the Linux kernel via the SocketCAN API into the CAN device driver. If a real CAN controller is connected, the filter is applied directly to this electrical device to physically accept or reject CAN frames by using a minterm of the binary representation of the ID specified in this object. This is simulated in the software-only rendition of things also, since `vcan` mimicks a physical CAN controller, as mentioned earlier.
 
-Anyway, this means we need to generate CAN data using only this fixed identifier in the CAN header. So, where before we had random identifiers somewhere in the valid CAN ID range, we will now only have a CAN identifier of `0x036`. This is done simply by running `cangen vcan0`, using the additional flag, `-I 036`. Change the size of the generated CANBUS frames with `canbus -L [size in bytes]` -- this is helpful for emulating devices which send with fixed-sized frames. CAN has a max data size of 64 bits (8 bytes). This is sometimes necessary for testing DBC functionality. Example:
+Anyway, this means we need to generate CAN data using only this fixed identifier in the CAN header. So, where before we had random identifiers somewhere in the valid CAN ID range, we will now only have a CAN identifier of `0x036`. This is done simply by running `cangen vcan0`, using the additional flag, `-I 036`. Change the size of the generated CANBUS frames with `canbus -L [size in bytes]` -- this is helpful for emulating devices which send with fixed-sized frames. CAN has a max data size of 64 bits (8 bytes). `cantools` has a hard time decoding CAN frames that are not 64 bits long, so just fix them to 8 bytes, even if you don't require that many. Example:
 
 | CAN ID | CAN Data Size | `cangen` command       |
 |--------|---------------|------------------------|
 | 0x103  | 4 Bytes       | `cangen -L 4 -I 0x103` |
 | 0x104  | 6 Bytes       | `cangen -L 6 -I 0x104` |
+| 0x103  | 8 Bytes       | `cangen -L 8 -I 0x103` |
+| 0x104  | 8 Bytes       | `cangen -L 8 -I 0x104` |
 
 Next, the code CAN socket needs to use `vcan` instead of the regular CAN interface. Since `vcan` is provided with SocketCAN, all we do is change the `channel` parameter in the interface instantiation to `vcan0`. With virtual CAN, we don't need to worry about bitrate, so we remove this parameter. Filters stay, since they are CAN protocol-dependent, and we want this testbed to represent the real CAN protocol used in the car, as closely as possible. For your convenience, the `channel = vcan0` instantiation has been provided in `canInterface.py`, but commented out. Simply uncomment it, and comment the `channel = can` instantiation, and start the program as normal. Try to avoid committing to the main branch the `channel = vcan` version if you can. (That's mostly a message to me... :)
 

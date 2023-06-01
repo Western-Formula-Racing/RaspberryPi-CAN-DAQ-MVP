@@ -21,16 +21,33 @@ ifclient = InfluxDBClient(
     host="127.0.0.1", port=8086, username="grafana", password="admin", database="home"
 )
 
-db = cantools.database.load_file("dbc/demo_sensorboard.dbc")
+# load DBs
+dbs = {}
+arbitration_id_to_db_name_map = {}
+for file_name in os.listdir('./dbc'):
+    if file_name[-3:] != "dbc":
+        raise Warning("Non-DBC file located in DB directory. Skipping")
+        pass 
 
-print("db messages:")
-pprint(db.messages)
+    dbs[file_name[0:-4]] = cantools.database.load_file(f"dbc/{file_name}")
+    
+    # map the arbitration IDs to the device name
+    for message in dbs[file_name[0:-4]].messages:
+        arbitration_id_to_db_name_map[message.frame_id] = file_name[0:-4]
 
-print("Sensor_board_1 signals:")
-pprint(db.get_message_by_name('Sensor_board_1').signals)
 
-print("Sensor_board_2 signals:")
-pprint(db.get_message_by_name('Sensor_board_2').signals)
+#db = cantools.database.load_file("dbc/demo_sensorboard.dbc")
+
+# print out info
+for db_name in dbs:
+    db = dbs[db_name]
+    print(f"db {db_name} messages:")
+    messages = db.messages
+    pprint(messages)
+    for message in messages:
+        print(f"{message.name} signals:")
+        pprint(db.get_message_by_name(message.name).signals)
+
 
 # MQTT publisher setup
 clientName = "daq"
@@ -41,7 +58,7 @@ def on_connect(client, userdata, flags, rc):
 
 
 def on_publish(client, userdata, result):
-    print("data published")
+    #print("MQTT data published")
     pass
 
 
@@ -54,18 +71,19 @@ mqttClient.connect("localhost", 1883)
 
 # CAN Bus stuff
 def decode_and_broadcast(msg: can.Message) -> None:
-    print(msg)
-    # decoded = db.decode_message(msg.arbitration_id, msg.data)
-    # board_name = db.get_message_by_frame_id(msg.arbitration_id).name
-    # body = [{ # I don't know why this object is an array https://influxdb-python.readthedocs.io/en/latest/examples.html
-    #     "measurement": board_name,
-    #     "time": datetime.datetime.utcnow(),
-    #     "fields": decoded
-    # }]
-    # ifclient.write_points(body)
-    # for reading in decoded:
-    #     mqttStr = f"{board_name}/{reading}"
-    #     self.mqttClient.publish(mqttStr, decoded[reading])
+    #print(msg)
+    db = dbs[arbitration_id_to_db_name_map[msg.arbitration_id]] # hashmap; constant lookup time 
+    decoded = db.decode_message(msg.arbitration_id, msg.data)
+    board_name = db.get_message_by_frame_id(msg.arbitration_id).name
+    body = [{ # I don't know why this object is an array https://influxdb-python.readthedocs.io/en/latest/examples.html
+        "measurement": board_name,
+        "time": datetime.datetime.utcnow(),
+        "fields": decoded
+    }]
+    ifclient.write_points(body)
+    for reading in decoded:
+        mqttStr = f"{board_name}/{reading}"
+        mqttClient.publish(mqttStr, decoded[reading])
 
 
 async def blocking_reader(reader: can.AsyncBufferedReader) -> None:
