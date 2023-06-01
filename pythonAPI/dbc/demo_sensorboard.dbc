@@ -39,12 +39,12 @@ BU_:
 
 BO_ 259 Sensor_board_1: 8 Vector__XXX
 	SG_ Sensor1 : 7|16@0+ (1,0) [0|1000] "N/A" Vector__XXX
+	SG_ Sensor5 : 23|16@0+ (1,0) [0|100000] "N/A" Vector__XXX
 
 BO_ 260 Sensor_board_2: 8 Vector__XXX
-	SG_ sensor5 : 7|16@0+ (1,0) [0|100000] "N/A" Vector__XXX
-	SG_ Sensor2 : 23|16@0+ (1,0) [0|1000] "N/A" Vector__XXX
-	SG_ Sensor3 : 39|16@0+ (0,0) [0|1000] "N/A" Vector__XXX
-	SG_ Sensor4 : 55|16@0+ (0,0) [0|1000] "N/A" Vector__XXX
+	SG_ Sensor2 : 7|16@0+ (1,0) [0|1000] "N/A" Vector__XXX
+	SG_ Sensor3 : 23|16@0+ (0,0) [0|1000] "N/A" Vector__XXX
+	SG_ Sensor4 : 39|16@0+ (0,0) [0|1000] "N/A" Vector__XXX
 
 
 CM_ BO_ 259 "Sens1_data1";

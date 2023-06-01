@@ -8,6 +8,7 @@ import datetime
 import paho.mqtt.client as mqtt
 from idMaps import CAN_ID_TO_SENSOR_BOARD_LUT
 from can.notifier import MessageRecipient
+from pprint import pprint
 
 # influxDb config
 ifuser = "grafana"
@@ -23,7 +24,13 @@ ifclient = InfluxDBClient(
 db = cantools.database.load_file("dbc/demo_sensorboard.dbc")
 
 print("db messages:")
-print(db.messages)
+pprint(db.messages)
+
+print("Sensor_board_1 signals:")
+pprint(db.get_message_by_name('Sensor_board_1').signals)
+
+print("Sensor_board_2 signals:")
+pprint(db.get_message_by_name('Sensor_board_2').signals)
 
 # MQTT publisher setup
 clientName = "daq"
