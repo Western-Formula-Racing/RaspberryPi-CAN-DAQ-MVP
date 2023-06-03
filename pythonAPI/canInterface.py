@@ -1,9 +1,14 @@
 import can
+import cantools
+import asyncio
+from typing import List
 import os
 from influxdb import InfluxDBClient
 import datetime
 import paho.mqtt.client as mqtt
 from idMaps import CAN_ID_TO_SENSOR_BOARD_LUT
+from can.notifier import MessageRecipient
+from pprint import pprint
 
 # influxDb config
 ifuser = "grafana"
@@ -12,8 +17,36 @@ ifdb = "home"
 ifhost = "127.0.0.1"
 ifport = 8086
 graphName = "SensorBoard1"
-ifclient = InfluxDBClient(host='127.0.0.1', port=8086,
-                          username='grafana', password='admin', database='home')
+ifclient = InfluxDBClient(
+    host="127.0.0.1", port=8086, username="grafana", password="admin", database="home"
+)
+
+# load DBs
+dbs = {}
+arbitration_id_to_db_name_map = {}
+for file_name in os.listdir('./dbc'):
+    if file_name[-3:] != "dbc":
+        raise Warning("Non-DBC file located in DB directory. Skipping")
+        pass 
+
+    dbs[file_name[0:-4]] = cantools.database.load_file(f"dbc/{file_name}")
+    
+    # map the arbitration IDs to the device name
+    for message in dbs[file_name[0:-4]].messages:
+        arbitration_id_to_db_name_map[message.frame_id] = file_name[0:-4]
+
+
+#db = cantools.database.load_file("dbc/demo_sensorboard.dbc")
+
+# print out info
+for db_name in dbs:
+    db = dbs[db_name]
+    print(f"db {db_name} messages:")
+    messages = db.messages
+    pprint(messages)
+    for message in messages:
+        print(f"{message.name} signals:")
+        pprint(db.get_message_by_name(message.name).signals)
 
 
 # MQTT publisher setup
@@ -21,11 +54,11 @@ clientName = "daq"
 
 
 def on_connect(client, userdata, flags, rc):
-    print("Connected with result code "+str(rc))
+    print("Connected with result code " + str(rc))
 
 
 def on_publish(client, userdata, result):
-    print("data published")
+    #print("MQTT data published")
     pass
 
 
@@ -33,56 +66,72 @@ mqttClient = mqtt.Client(clientName)
 mqttClient.on_connect = on_connect
 mqttClient.on_publish = on_publish
 
-mqttClient.connect("localhost")
+mqttClient.connect("localhost", 1883)
+
 
 # CAN Bus stuff
+def decode_and_broadcast(msg: can.Message) -> None:
+    #print(msg)
+    db = dbs[arbitration_id_to_db_name_map[msg.arbitration_id]] # hashmap; constant lookup time 
+    decoded = db.decode_message(msg.arbitration_id, msg.data)
+    board_name = db.get_message_by_frame_id(msg.arbitration_id).name
+    body = [{ # I don't know why this object is an array https://influxdb-python.readthedocs.io/en/latest/examples.html
+        "measurement": board_name,
+        "time": datetime.datetime.utcnow(),
+        "fields": decoded
+    }]
+    ifclient.write_points(body)
+    for reading in decoded:
+        mqttStr = f"{board_name}/{reading}"
+        mqttClient.publish(mqttStr, decoded[reading])
+
+
+async def blocking_reader(reader: can.AsyncBufferedReader) -> None:
+    while True:
+        await reader.get_message()
+
+
 filters = [
     # the mask is applied to the filter to determine which bits in the ID to check (https://forum.arduino.cc/t/filtering-and-masking-in-can-bus/586068/3)
-    {"can_id": 0x036, "can_mask": 0xFFF, "extended": False}
+    {"can_id": 0x103, "can_mask": 0xFFF, "extended": False},  # sensor board 1
+    {"can_id": 0x104, "can_mask": 0xFFF, "extended": False},  # sensor board 2
 ]
 # start an interface using the socketcan interface, using the can0 physical device at a 500KHz frequency with the above filters
-#bus = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=500000, can_filters=filters)
 
-# Use the virtual CAN interface in lieu of a physical connection 
-bus = can.interface.Bus(bustype='socketcan', channel='vcan0', can_filters=filters)
+# Use the virtual CAN interface in lieu of a physical connection
+bus_one = can.interface.Bus(bustype="socketcan", channel="vcan0", filter=filters[0])
+bus_two = can.interface.Bus(bustype="socketcan", channel="vcan1", filter=filters[1])
 
-print("reading Can Bus:")
-for msg in bus:
-    #os.system('clear')
+async def main() -> None:
+    reader_bus_one = can.AsyncBufferedReader()
+    reader_bus_two = can.AsyncBufferedReader()
 
-    hub1 = [0 for x in range(8)]
+    # Logger can be used to log to Influx, it just has to be made (see logic in listeners.py)
+    logger = can.Logger("logfile.asc")
 
-    if msg.arbitration_id == 0x36: 
-        if len(msg.data) > 8 or len(msg.data) < 0: 
-            # not really possible if the MTU of the CAN interface is less than or equal to 16
-            raise ValueError("Invalid message size")
-        for i, byte in enumerate(msg.data):
-            hub1[i] = byte
+    listeners_bus_one: List[MessageRecipient] = [
+        decode_and_broadcast,  # Callback function
+        reader_bus_one,  # AsyncBufferedReader() listener
+        logger,  # Regular Listener object
+    ]
 
-    time = datetime.datetime.utcnow()
+    listeners_bus_two: List[MessageRecipient] = [
+        decode_and_broadcast, 
+        reader_bus_two,  
+        logger, 
+    ]
 
-    body = [{ # I don't know why this object is an array https://influxdb-python.readthedocs.io/en/latest/examples.html
-        "measurement": CAN_ID_TO_SENSOR_BOARD_LUT[msg.arbitration_id]["board_name"],
-        "time": time,
-        "fields": {}
-    }]
+    # Create Notifier with an explicit loop to use for scheduling of callbacks
+    loop = asyncio.get_running_loop()
+    notifier_bus_one = can.Notifier(bus_one, listeners_bus_one, loop=loop)
+    notifier_bus_two = can.Notifier(bus_two, listeners_bus_two, loop=loop)
 
-    for i, sensors in enumerate(CAN_ID_TO_SENSOR_BOARD_LUT[msg.arbitration_id]["sensors"]):
-        print("this is sensors:")
-        body[0]["fields"][sensors["sensor_name"]] = hub1[i]
+    # Right now, this will be running until the car is turned off, so no end 
+    await asyncio.gather(
+        blocking_reader(reader_bus_one),
+        blocking_reader(reader_bus_two),
+    )
 
-    ifclient.write_points(body)
-    mqttClient.publish("SensorBoard1/sensor1", hub1[0])
-    mqttClient.publish("SensorBoard1/sensor2", hub1[1])
-    mqttClient.publish("SensorBoard1/sensor3", hub1[2])
-    mqttClient.publish("SensorBoard1/sensor4", hub1[3])
-    mqttClient.publish("SensorBoard1/sensor5", hub1[4])
-    mqttClient.publish("SensorBoard1/sensor6", hub1[5])
-    mqttClient.publish("SensorBoard1/sensor7", hub1[6])
-    mqttClient.publish("SensorBoard1/sensor8", hub1[7])
 
-    print("Sensor Hub 1:")
-    for sensors in body[0]["fields"]:
-        print(f"{sensors}: {body[0]['fields'][sensors]}")
-    
-    print("\r")
+if __name__ == "__main__":
+    asyncio.run(main())
