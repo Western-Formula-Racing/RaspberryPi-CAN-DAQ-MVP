@@ -74,16 +74,39 @@ First we need to update our package list and upgrade all our out of date package
  sudo apt upgrade -y
 ```
 
-Then we can add the InfluxDB repositories to our package manager (apt):
+Then we can add the InfluxDB repositories to our package manager (apt). First, get the Influx signing key and verify that it's the same as the most updated one (https://www.influxdata.com/blog/linux-package-signing-key-rotation/) -- enter these one at a time:
 ```
-wget -qO- https://repos.influxdata.com/influxdb.key | sudo apt-key add -
-source /etc/os-release
-echo "deb https://repos.influxdata.com/debian $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
+$ wget -q https://repos.influxdata.com/influxdata-archive_compat.key
+$ gpg --with-fingerprint --show-keys ./influxdata-archive_compat.key
 ```
-Run update again to get the latest version information then install InfluxDB:
+
+Now install and update the package manager (`apt`) to use the key:
 ```
- sudo apt update && sudo apt install -y influxdb
+$ cat influxdata-archive_compat.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg > /dev/null 
+
+$ echo 'deb [signed-by=/etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg] https://repos.influxdata.com/debian stable main' | sudo tee /etc/apt/sources.list.d/influxdata.list
 ```
+
+Run `sudo apt update` again, refreshing the package manager with the newly-added repo, ensuring there are no errors for the `influxdata` repository source:
+```
+$ sudo apt update
+
+Hit:1 http://deb.debian.org/debian bullseye InRelease
+Hit:2 http://security.debian.org/debian-security bullseye-security InRelease                                  
+Hit:3 http://deb.debian.org/debian bullseye-updates InRelease                                                 
+Hit:4 https://repos.influxdata.com/debian stable InRelease                                                    
+Hit:5 http://archive.raspberrypi.org/debian bullseye InRelease                                                
+Reading package lists... Done                                   
+Building dependency tree... Done
+Reading state information... Done
+All packages are up to date.
+```
+
+Install InfluxDB now:
+```
+sudo apt install -y influxdb
+```
+
 Running the following starts the InfluxDB service and adds it to the list of programs to run on boot:
 ```
 sudo systemctl unmask influxdb.service
@@ -98,7 +121,7 @@ use home
 create user grafana with password 'Admin' with all privileges
 grant all privileges on home to grafana
 ```
-We can check it worked by running `show users` in the client. That's it for influx. you can choose a different password and username, just make sure to update the `canInterface.py` file if you choose to do so. 
+We can check it worked by running `show users` in the client. That's it for influx. You can choose a different password and username, just make sure to update the `canInterface.py` file if you choose to do so. 
 
 #### Mosuitto MQTT Broker
 While having the data stored in InfluxDB is great for persistant time series data, it doesn't give truly "live" data feeds. Grafana uses database queries to grab the information to display. In order to achieve reasonable performance, the number of queries is limited to once per second. While this is perfectly fine for reviewing data, it would be nice to be able to watch the data in "real time". MQTT is a messaging protocol based on Websockets that allows for real time telemetry, so I've made it so that all sensor data is published to a [Mosquitto MQTT client](https://mosquitto.org/) as well on the RPi so that Grafana can stream it in real time. 
