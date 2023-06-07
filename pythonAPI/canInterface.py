@@ -25,18 +25,12 @@ ifclient = InfluxDBClient(
 dbs = {}
 arbitration_id_to_db_name_map = {}
 for file_name in os.listdir('./dbc'):
-    if file_name[-3:] != "dbc":
-        raise Warning("Non-DBC file located in DB directory. Skipping")
-        pass 
+    if file_name[-3:] == "dbc":
+        dbs[f"{file_name[0:-4]}"] = cantools.database.load_file(f"dbc/{file_name}")
+        # map the arbitration IDs to the device name
+        for message in dbs[file_name[0:-4]].messages:
+            arbitration_id_to_db_name_map[message.frame_id] = file_name[0:-4]
 
-    dbs[file_name[0:-4]] = cantools.database.load_file(f"dbc/{file_name}")
-    
-    # map the arbitration IDs to the device name
-    for message in dbs[file_name[0:-4]].messages:
-        arbitration_id_to_db_name_map[message.frame_id] = file_name[0:-4]
-
-
-#db = cantools.database.load_file("dbc/demo_sensorboard.dbc")
 
 # print out info
 for db_name in dbs:
@@ -96,15 +90,17 @@ filters = [
     {"can_id": 0x103, "can_mask": 0xFFF, "extended": False},  # sensor board 1
     {"can_id": 0x104, "can_mask": 0xFFF, "extended": False},  # sensor board 2
 ]
+
 # start an interface using the socketcan interface, using the can0 physical device at a 500KHz frequency with the above filters
+bus_one = can.interface.Bus(bustype='socketcan', channel='can1', bitrate=500000, can_filters=filters) # Inverter CAN network bus
 
 # Use the virtual CAN interface in lieu of a physical connection
-bus_one = can.interface.Bus(bustype="socketcan", channel="vcan0", filter=filters[0])
-bus_two = can.interface.Bus(bustype="socketcan", channel="vcan1", filter=filters[1])
+#bus_one = can.interface.Bus(bustype="socketcan", channel="vcan0", filter=filters[0])
+#bus_two = can.interface.Bus(bustype="socketcan", channel="vcan1", filter=filters[1])
 
 async def main() -> None:
     reader_bus_one = can.AsyncBufferedReader()
-    reader_bus_two = can.AsyncBufferedReader()
+    # reader_bus_two = can.AsyncBufferedReader()
 
     # Logger can be used to log to Influx, it just has to be made (see logic in listeners.py)
     logger = can.Logger("logfile.asc")
@@ -115,21 +111,21 @@ async def main() -> None:
         logger,  # Regular Listener object
     ]
 
-    listeners_bus_two: List[MessageRecipient] = [
-        decode_and_broadcast, 
-        reader_bus_two,  
-        logger, 
-    ]
+    # listeners_bus_two: List[MessageRecipient] = [
+    #     decode_and_broadcast, 
+    #     reader_bus_two,  
+    #     logger, 
+    # ]
 
     # Create Notifier with an explicit loop to use for scheduling of callbacks
     loop = asyncio.get_running_loop()
     notifier_bus_one = can.Notifier(bus_one, listeners_bus_one, loop=loop)
-    notifier_bus_two = can.Notifier(bus_two, listeners_bus_two, loop=loop)
+    #notifier_bus_two = can.Notifier(bus_two, listeners_bus_two, loop=loop)
 
     # Right now, this will be running until the car is turned off, so no end 
     await asyncio.gather(
         blocking_reader(reader_bus_one),
-        blocking_reader(reader_bus_two),
+        #blocking_reader(reader_bus_two),
     )
 
 

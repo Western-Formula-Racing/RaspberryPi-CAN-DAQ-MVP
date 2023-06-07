@@ -92,14 +92,18 @@ Run `sudo apt update` again, refreshing the package manager with the newly-added
 $ sudo apt update
 
 Hit:1 http://deb.debian.org/debian bullseye InRelease
-Hit:2 http://security.debian.org/debian-security bullseye-security InRelease                                  
-Hit:3 http://deb.debian.org/debian bullseye-updates InRelease                                                 
-Hit:4 https://repos.influxdata.com/debian stable InRelease                                                    
-Hit:5 http://archive.raspberrypi.org/debian bullseye InRelease                                                
-Reading package lists... Done                                   
+Hit:2 http://deb.debian.org/debian bullseye-updates InRelease                                                              
+Hit:3 http://security.debian.org/debian-security bullseye-security InRelease                                               
+Get:4 https://repos.influxdata.com/debian stable InRelease [6,892 B]                                                       
+Hit:5 http://archive.raspberrypi.org/debian bullseye InRelease                                                             
+Get:6 https://repos.influxdata.com/debian stable/main armhf Packages [2,547 B]
+Get:7 https://repos.influxdata.com/debian stable/main arm64 Packages [4,873 B]
+Fetched 14.3 kB in 1s (10.6 kB/s)   
+Reading package lists... Done
 Building dependency tree... Done
 Reading state information... Done
 All packages are up to date.
+
 ```
 
 Install InfluxDB now:
