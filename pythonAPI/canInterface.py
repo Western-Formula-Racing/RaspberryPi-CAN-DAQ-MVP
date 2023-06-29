@@ -87,8 +87,34 @@ async def blocking_reader(reader: can.AsyncBufferedReader) -> None:
 
 filters = [
     # the mask is applied to the filter to determine which bits in the ID to check (https://forum.arduino.cc/t/filtering-and-masking-in-can-bus/586068/3)
-    {"can_id": 0x103, "can_mask": 0xFFF, "extended": False},  # sensor board 1
-    {"can_id": 0x104, "can_mask": 0xFFF, "extended": False},  # sensor board 2
+    {"can_id": 259, "can_mask": 0xFFF, "extended": False}, # sensor board 2_1
+    {"can_id": 260, "can_mask": 0xFFF, "extended": False}, # sensor board 2_2
+    {"can_id": 261, "can_mask": 0xFFF, "extended": False}, # sensor board 1_1
+    {"can_id": 262, "can_mask": 0xFFF, "extended": False}, # sensor board 1_2
+    {"can_id": 2196807762, "can_mask": 0xFFFFFFF, "extended": True}, # M152_AccData2
+    {"can_id": 2196807760, "can_mask": 0xFFFFFFF, "extended": True}, # M150_AccData1
+    {"can_id": 2196807732, "can_mask": 0xFFFFFFF, "extended": True}, # M134_MotorTorqueData8
+    {"can_id": 2196807730, "can_mask": 0xFFFFFFF, "extended": True}, # M132_MotorTorqueData7
+    {"can_id": 2196807728, "can_mask": 0xFFFFFFF, "extended": True}, # M130_MotorTorqueData6
+    {"can_id": 2196807720, "can_mask": 0xFFFFFFF, "extended": True}, # M128_MotorTorqueData5
+    {"can_id": 2196807704, "can_mask": 0xFFFFFFF, "extended": True}, # M118_VehicleInputs4
+    {"can_id": 2196807702, "can_mask": 0xFFFFFFF, "extended": True}, # M116_VehicleInputs3
+    {"can_id": 2196807684, "can_mask": 0xFFFFFFF, "extended": True}, # M104_VCU_States3
+    {"can_id": 2196807744, "can_mask": 0xFFFFFFF, "extended": True}, # M140_MotorSpeedData3
+    {"can_id": 2196807748, "can_mask": 0xFFFFFFF, "extended": True}, # M144_VCU_FaultStates1
+    {"can_id": 2196807682, "can_mask": 0xFFFFFFF, "extended": True}, # M102_VCU_States2
+    {"can_id": 2196807688, "can_mask": 0xFFFFFFF, "extended": True}, # M108_DriverInputs2
+    {"can_id": 2196807700, "can_mask": 0xFFFFFFF, "extended": True}, # M114_VehicleInputs2
+    {"can_id": 2196807736, "can_mask": 0xFFFFFFF, "extended": True}, # M138_MotorSpeedData2
+    {"can_id": 2196807734, "can_mask": 0xFFFFFFF, "extended": True}, # M136_MotorSpeedData1
+    {"can_id": 2196807718, "can_mask": 0xFFFFFFF, "extended": True}, # M126_MotorTorqueData4
+    {"can_id": 2196807716, "can_mask": 0xFFFFFFF, "extended": True}, # M124_MotorTorqueData3
+    {"can_id": 2196807714, "can_mask": 0xFFFFFFF, "extended": True}, # M122_MotorTorqueData2
+    {"can_id": 2196807712, "can_mask": 0xFFFFFFF, "extended": True}, # M120_MotorTorqueData1
+    {"can_id": 2196807698, "can_mask": 0xFFFFFFF, "extended": True}, # M112_VehicleInputs1
+    {"can_id": 2196807680, "can_mask": 0xFFFFFFF, "extended": True}, # M100_VCU_States1
+    {"can_id": 2196807686, "can_mask": 0xFFFFFFF, "extended": True}  # M106_DriverInputs1
+
 ]
 
 # start an interface using the socketcan interface, using the can0 physical device at a 500KHz frequency with the above filters
