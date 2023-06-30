@@ -6,7 +6,6 @@ import os
 from influxdb import InfluxDBClient
 import datetime
 import paho.mqtt.client as mqtt
-from idMaps import CAN_ID_TO_SENSOR_BOARD_LUT
 from can.notifier import MessageRecipient
 from pprint import pprint
 
