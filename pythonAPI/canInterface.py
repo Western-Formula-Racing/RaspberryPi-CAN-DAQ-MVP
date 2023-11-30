@@ -117,12 +117,12 @@ filters = [
 ]
 
 # start an interface using the socketcan interface, using the can0 physical device at a 500KHz frequency with the above filters
-bus_one = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=500000, can_filters=filters) # BMS CAN network bus
-bus_two = can.interface.Bus(bustype='socketcan', channel='can1', bitrate=500000, can_filters=filters) # Inverter CAN network bus
+# bus_one = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=500000, can_filters=filters) # BMS CAN network bus
+# bus_two = can.interface.Bus(bustype='socketcan', channel='can1', bitrate=500000, can_filters=filters) # Inverter CAN network bus
 
 # Use the virtual CAN interface in lieu of a physical connection
-#bus_one = can.interface.Bus(bustype="socketcan", channel="vcan0", filter=filters[0])
-#bus_two = can.interface.Bus(bustype="socketcan", channel="vcan1", filter=filters[1])
+bus_one = can.interface.Bus(bustype="socketcan", channel="vcan0", filter=filters[0])
+bus_two = can.interface.Bus(bustype="socketcan", channel="vcan1", filter=filters[1])
 
 async def main() -> None:
     reader_bus_one = can.AsyncBufferedReader()

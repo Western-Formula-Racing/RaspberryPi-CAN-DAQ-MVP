@@ -1,7 +1,7 @@
 # Virtual CAN Datastream Generation
 If you don't have the hardware, you can still generate a reliable datastream and build a DAQ testbed, right from the comfort of your own virtual machine. This uses virtual CAN interfaces provided by the SocketCAN Linux module to mimick a physical CAN controller, combined with tools from `can-utils` to generate the datastream.  
 
-## Depedencies
+## Dependencies
 - ``can-utils`` package (use command `sudo apt-get install can-utils`)
 - ``net-tools`` package (use command `sudo apt-get install net-tools`)
 - ``vcan`` linux module (use command `sudo modprobe vcan`, it should return nothing)
@@ -24,7 +24,9 @@ To view details about the interface, you can use the command `ifconfig vcan0`. I
 ## Maximum Transmission Unit (MTU)
 The default MTU of `vcan0` is 72 bytes. Since we are using classic CAN and not CAN Flexible Data-rate (CAN FD), we only need an MTU of 16 bytes. 
 
-To change this, we need to 1. turn off the interface, 2. change MTU setting to 16, 3. turn the socket on again:  
+To change this, we need to execute the command `sudo ip link set mtu 16 vcan0` while the interfaces are down. 
+
+1. turn off the interface, 2. change MTU setting to 16, 3. turn the interface on again:  
 
 <img src="https://user-images.githubusercontent.com/70295347/234093116-df71077a-3e69-456f-9da8-b466f780489e.png" width="800">
 

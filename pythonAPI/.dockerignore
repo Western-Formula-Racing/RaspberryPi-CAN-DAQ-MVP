@@ -1,0 +1,8 @@
+# Start by ignoring everything
+**
+
+# Don't ignore source code and its dependencies
+!Pipfile
+!Pipfile.lock
+!canInterface.py
+!dbc/
