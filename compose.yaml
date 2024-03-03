@@ -1,0 +1,25 @@
+name: wfrdaq
+services:
+  influxdb:
+    image: influxdb
+    volumes:
+      - ./influxdb_volume:/var/lib/influxdb2
+    ports:
+      - 8086:8086
+    env_file: .env
+  grafana:
+    image: grafana/grafana
+    user: '0' # '0 if you're running as root but otherwise find your id with id -u'
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana_volume:/var/lib/grafana
+  nginx:
+    build: ./nginx/.
+    ports: 
+      - 80:80
+  mqtt_broker:
+    image: eclipse-mosquitto
+    ports:
+      - 1883:1883
+      - 9001:9001
