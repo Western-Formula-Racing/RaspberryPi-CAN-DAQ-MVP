@@ -2,7 +2,7 @@
 MQTT and Grafana work fine now. Max data points doesn't matter that much. The key for stability with Grafana visualizations with MQTT as the data source is to make sure the time interval is sufficiently short (I've had luck with "now-20s" absolute time range) and turn auto refresh off. This sucks for InfluxDB-based visualizations because they require auto refresh to update. Maybe two separate dashboards can be created for InfluxDB-based visualizations and MQTT-based visualizations.
 
 Auto refresh can be turned off at done at the dashboard-level, not the visualization level:
-<img src="https://gist.github.com/assets/70295347/fc5f5680-5812-4f94-ab66-8e8513501d13" width="800">
+<img src="https://github.com/Western-Formula-Racing/daq-2023/assets/70295347/df898cb8-f322-47a1-9fc4-9d31460abf32" width="800">
 
 # MQTT + Grafana is Tumultuous
 This combination of technologies is particularly cumbersome and fragile in its current state. 
