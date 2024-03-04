@@ -3,25 +3,26 @@ import cantools
 import asyncio
 from typing import List
 import os
-from influxdb import InfluxDBClient
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
 import datetime
 import paho.mqtt.client as mqtt
-from idMaps import CAN_ID_TO_SENSOR_BOARD_LUT
-from can.notifier import MessageRecipient
 from pprint import pprint
 
 # influxDb config
-ifuser = "grafana"
-ifpass = "Admin"
-ifdb = "home"
-ifhost = "127.0.0.1"
-ifport = 8086
-graphName = "SensorBoard1"
-ifclient = InfluxDBClient(
-    host="127.0.0.1", port=8086, username="grafana", password="admin", database="home"
+influx_token = os.environ.get('INFLUX_TOKEN')
+influx_bucket = os.environ.get('INFLUX_BUCKET')
+influx_org = os.environ.get('INFLUX_ORGANIZATION')
+influx_url = "http://localhost:8086"
+influx_client = InfluxDBClient(
+    url = influx_url, 
+    org = influx_org,
+    token = influx_token,
+    debug = True
 )
+influx_write_api = influx_client.write_api(write_options = SYNCHRONOUS)
 
-# load DBs
+# load DBCs
 dbs = {}
 arbitration_id_to_db_name_map = {}
 for file_name in os.listdir('./dbc'):
@@ -47,16 +48,16 @@ for db_name in dbs:
 clientName = "daq"
 
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, reason_codes, properties):
     print("Connected with result code " + str(rc))
 
 
 def on_publish(client, userdata, result):
-    #print("MQTT data published")
+    print("MQTT data published")
     pass
 
 
-mqttClient = mqtt.Client(clientName)
+mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, clientName)
 mqttClient.on_connect = on_connect
 mqttClient.on_publish = on_publish
 
@@ -69,12 +70,14 @@ def decode_and_broadcast(msg: can.Message) -> None:
     db = dbs[arbitration_id_to_db_name_map[msg.arbitration_id]] # hashmap; constant lookup time 
     decoded = db.decode_message(msg.arbitration_id, msg.data)
     board_name = db.get_message_by_frame_id(msg.arbitration_id).name
-    body = [{ # I don't know why this object is an array https://influxdb-python.readthedocs.io/en/latest/examples.html
+    body = { 
         "measurement": board_name,
         "time": datetime.datetime.utcnow(),
-        "fields": decoded
-    }]
-    ifclient.write_points(body)
+        "fields": decoded,
+        "tags": {}
+    }
+    data_point = Point.from_dict(body)
+    influx_write_api.write(bucket = influx_bucket, record = data_point)
     for reading in decoded:
         mqttStr = f"{board_name}/{reading}"
         mqttClient.publish(mqttStr, decoded[reading])
@@ -87,45 +90,71 @@ async def blocking_reader(reader: can.AsyncBufferedReader) -> None:
 
 filters = [
     # the mask is applied to the filter to determine which bits in the ID to check (https://forum.arduino.cc/t/filtering-and-masking-in-can-bus/586068/3)
-    {"can_id": 0x103, "can_mask": 0xFFF, "extended": False},  # sensor board 1
-    {"can_id": 0x104, "can_mask": 0xFFF, "extended": False},  # sensor board 2
+    {"can_id": 259, "can_mask": 0xFFF, "extended": False}, # sensor board 2_1
+    {"can_id": 260, "can_mask": 0xFFF, "extended": False}, # sensor board 2_2
+    {"can_id": 261, "can_mask": 0xFFF, "extended": False}, # sensor board 1_1
+    {"can_id": 262, "can_mask": 0xFFF, "extended": False}, # sensor board 1_2
+    {"can_id": 2196807762, "can_mask": 0xFFFFFFF, "extended": True}, # M152_AccData2
+    {"can_id": 2196807760, "can_mask": 0xFFFFFFF, "extended": True}, # M150_AccData1
+    {"can_id": 2196807732, "can_mask": 0xFFFFFFF, "extended": True}, # M134_MotorTorqueData8
+    {"can_id": 2196807730, "can_mask": 0xFFFFFFF, "extended": True}, # M132_MotorTorqueData7
+    {"can_id": 2196807728, "can_mask": 0xFFFFFFF, "extended": True}, # M130_MotorTorqueData6
+    {"can_id": 2196807720, "can_mask": 0xFFFFFFF, "extended": True}, # M128_MotorTorqueData5
+    {"can_id": 2196807704, "can_mask": 0xFFFFFFF, "extended": True}, # M118_VehicleInputs4
+    {"can_id": 2196807702, "can_mask": 0xFFFFFFF, "extended": True}, # M116_VehicleInputs3
+    {"can_id": 2196807684, "can_mask": 0xFFFFFFF, "extended": True}, # M104_VCU_States3
+    {"can_id": 2196807744, "can_mask": 0xFFFFFFF, "extended": True}, # M140_MotorSpeedData3
+    {"can_id": 2196807748, "can_mask": 0xFFFFFFF, "extended": True}, # M144_VCU_FaultStates1
+    {"can_id": 2196807682, "can_mask": 0xFFFFFFF, "extended": True}, # M102_VCU_States2
+    {"can_id": 2196807688, "can_mask": 0xFFFFFFF, "extended": True}, # M108_DriverInputs2
+    {"can_id": 2196807700, "can_mask": 0xFFFFFFF, "extended": True}, # M114_VehicleInputs2
+    {"can_id": 2196807736, "can_mask": 0xFFFFFFF, "extended": True}, # M138_MotorSpeedData2
+    {"can_id": 2196807734, "can_mask": 0xFFFFFFF, "extended": True}, # M136_MotorSpeedData1
+    {"can_id": 2196807718, "can_mask": 0xFFFFFFF, "extended": True}, # M126_MotorTorqueData4
+    {"can_id": 2196807716, "can_mask": 0xFFFFFFF, "extended": True}, # M124_MotorTorqueData3
+    {"can_id": 2196807714, "can_mask": 0xFFFFFFF, "extended": True}, # M122_MotorTorqueData2
+    {"can_id": 2196807712, "can_mask": 0xFFFFFFF, "extended": True}, # M120_MotorTorqueData1
+    {"can_id": 2196807698, "can_mask": 0xFFFFFFF, "extended": True}, # M112_VehicleInputs1
+    {"can_id": 2196807680, "can_mask": 0xFFFFFFF, "extended": True}, # M100_VCU_States1
+    {"can_id": 2196807686, "can_mask": 0xFFFFFFF, "extended": True}  # M106_DriverInputs1
 ]
 
 # start an interface using the socketcan interface, using the can0 physical device at a 500KHz frequency with the above filters
-bus_one = can.interface.Bus(bustype='socketcan', channel='can1', bitrate=500000, can_filters=filters) # Inverter CAN network bus
+# bus_one = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=500000, can_filters=filters) # BMS CAN network bus
+# bus_two = can.interface.Bus(bustype='socketcan', channel='can1', bitrate=500000, can_filters=filters) # Inverter CAN network bus
 
 # Use the virtual CAN interface in lieu of a physical connection
-#bus_one = can.interface.Bus(bustype="socketcan", channel="vcan0", filter=filters[0])
-#bus_two = can.interface.Bus(bustype="socketcan", channel="vcan1", filter=filters[1])
+bus_one = can.interface.Bus(bustype="socketcan", channel="vcan0", filter=filters[0])
+bus_two = can.interface.Bus(bustype="socketcan", channel="vcan1", filter=filters[1])
 
 async def main() -> None:
     reader_bus_one = can.AsyncBufferedReader()
-    # reader_bus_two = can.AsyncBufferedReader()
+    reader_bus_two = can.AsyncBufferedReader()
 
     # Logger can be used to log to Influx, it just has to be made (see logic in listeners.py)
     logger = can.Logger("logfile.asc")
 
-    listeners_bus_one: List[MessageRecipient] = [
+    listeners_bus_one: List[can.notifier.MessageRecipient] = [
         decode_and_broadcast,  # Callback function
         reader_bus_one,  # AsyncBufferedReader() listener
         logger,  # Regular Listener object
     ]
 
-    # listeners_bus_two: List[MessageRecipient] = [
-    #     decode_and_broadcast, 
-    #     reader_bus_two,  
-    #     logger, 
-    # ]
+    listeners_bus_two: List[can.notifier.MessageRecipient] = [
+        decode_and_broadcast, 
+        reader_bus_two,  
+        logger, 
+    ]
 
     # Create Notifier with an explicit loop to use for scheduling of callbacks
     loop = asyncio.get_running_loop()
     notifier_bus_one = can.Notifier(bus_one, listeners_bus_one, loop=loop)
-    #notifier_bus_two = can.Notifier(bus_two, listeners_bus_two, loop=loop)
+    notifier_bus_two = can.Notifier(bus_two, listeners_bus_two, loop=loop)
 
     # Right now, this will be running until the car is turned off, so no end 
     await asyncio.gather(
         blocking_reader(reader_bus_one),
-        #blocking_reader(reader_bus_two),
+        blocking_reader(reader_bus_two),
     )
 
 

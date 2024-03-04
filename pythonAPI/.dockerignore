@@ -1,0 +1,7 @@
+# Start by ignoring everything
+**
+
+# Don't ignore source code and its dependencies
+!requirements.txt
+!canInterface.py
+!dbc/

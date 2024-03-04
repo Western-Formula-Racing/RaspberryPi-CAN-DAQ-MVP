@@ -1,17 +1,16 @@
-# RaspberryPi-CAN-DAQ-MVP
-A minimum viable product (MVP) to serve as a proof of concept for the intended WFR 2023 data acquisition system (DAQ) 
-![image](https://user-images.githubusercontent.com/25854486/209480355-1d6d6520-5e73-4ade-936d-d53ffd8260fb.png)
+# WFR Data Acquisition System
+This repository stores the code and other software resources defining the WFR Data Acquisition System (DAQ). 
 
-## Raspberry Pi setup
-### Hardware
-This project has been tested to work with a MCP 2515 based CAN Bus board, which connects to SPI0 on the Raspberry Pi. I used a Raspberry Pi 3B V1.2, but it should work on any 3 and above type RPi models, (although for better compatability with InfluxDB, a RPi 4 series is recommended but more on that later)
+## Hardware Setup
+For hardware setup, please refer to the following excerpt from [THEORY_README.md](./documentation/old_but_useful_for_problem_solving/THEORY_README.md): 
 
-<img src="https://user-images.githubusercontent.com/25854486/209448905-cbbaac77-50bf-4a75-8132-85bc5a5c5922.png" width="200">
+### Physical Layer
+#### CAN Interface
+This project has been tested to work with a MCP2515-based CAN Bus board, which connects to `SPI0` on the Raspberry Pi Model 4B:  
 
+<img src="https://user-images.githubusercontent.com/25854486/209448905-cbbaac77-50bf-4a75-8132-85bc5a5c5922.png" width="200"> 
 
-The pin connection is as follows: 
-
-
+The pin connection is as follows:
 | MCP2515 Module| Raspberry Pi Pin #| Pin Description  |
 | ------------- |:---------------------:| :-----:|
 | VCC           | pin 2                 |5V (it's better to use external 5V power)|
@@ -22,174 +21,117 @@ The pin connection is as follows:
 | INT           | pin 22                |    GPIO 25 |
 | CS            | pin 24                |    GPIO 8 (SPI0_CE0_N)|
 
-### Drivers
+#### Raspberry Pi System Storage
+Due to the relatively rapid read/write speed requirements of the data acquisition use case, a Samsung T7 external SSD is used as the main storage volume. 500 GB storage capacity is recommended, but more is always welcome. The SSD connects to the Raspberry Pi using a USB-C-to-USB-A 3.1 cable. For connection integrity, it is important that the SSD and Raspberry Pi are packaged as a unit, such that the accelerations experienced by the SSD and the Pi are similar. Otherwise, high-variation cable strain may cause physical damage to the SSD, the cable, the Raspberry Pi, or some combination thereof. Even transient disconnection of the SSD could cause catastrophic data loss. Hence, data should be backed up and extracted from the unit as frequently as possible. 
+
+### Driver Layer
 #### SocketCAN 
-This project heavily relies on [SocketCAN](https://docs.kernel.org/networking/can.html) which from my understanding is the Linux kernel's default CAN Bus interface implementation, that aims to treat CAN Bus interface devices similar to regular network devices and mimic the TCP/IP protocol to make it easier to use. It also natively supports MCP2515 based controllers. Since this is built in, nothing needs to be installed, however the `/boot/config.text` needs to have the following line appended to it:
+This project heavily relies on [SocketCAN](https://docs.kernel.org/networking/can.html) which is the Linux kernel's default CAN Bus interface implementation. It treats CAN Bus interface devices similar to regular network devices and mimics the TCP/IP protocol to make it easier to use. It also natively supports MCP2515 based controllers. Since this is built-in, nothing needs to be installed, however the `/boot/config.text` needs to have the following line appended to it:
 ```
 dtoverlay=mcp2515-can0,oscillator=8000000,interrupt=25 
-```
-This gets the Linux kernel to automatically discover the CAN Controller on the SPI interface. If your interface pin has a different oscillator frequency, you can change that here. 
+```  
+This gets the Linux kernel to automatically discover the CAN Controller on the SPI interface. If your interface pin has a different oscillator frequency, you can change that here.  
+
 Now reboot the Pi and check the kernel messsages (you can bring this up in the terminal by using the command: `dmesg | grep spi)` or `dmesg` to view all kernel messages), and you should see the following:
 ```
 [    8.050044] mcp251x spi0.0 can0: MCP2515 successfully initialized.
-```
+```  
+
 Finally, to enable the CAN Interface run the following in the terminal:
 ```
  sudo /sbin/ip link set can0 up type can bitrate 500000 
-```
-If you are using a different bitrate on your CAN Bus, you can change the value. You will need to run this command after every reboot, however you can set it to run automatically on startup by appending the following to the `/etc/network/interfaces` file:
+```  
+
+If you are using a different bitrate on your CAN Bus, you can change the value. You'll need to edit the declarations of `bus_one` and `bus_two` in `pythonAPI/canInterface.py` to match the new bitrate. 
+
+You will need to run this command after every reboot, however you can set it to run automatically on startup by appending the following to the `/etc/network/interfaces` file:
 ```
 auto can0
 iface can0 inet manual
     pre-up /sbin/ip link set can0 type can bitrate 500000 triple-sampling on restart-ms 100
     up /sbin/ifconfig can0 up
     down /sbin/ifconfig can0 down
-```
-And that's everything to get the CAN Bus interface working! Since SocketCAN acts like a regular network device, we can get some statistic information by using the `ifconfig` terminal command, which can be obtained with the `net-tools` package using `sudo apt-get install net-tools`. 
+```  
+
+And that's everything to get the CAN Bus interface working! Since SocketCAN acts like a regular network device, we can get some statistic information by using the `ifconfig` terminal command, which can be obtained with the `net-tools` package using `sudo apt-get install net-tools`.  
+
 #### CAN-utils
-[CAN-utils](https://github.com/linux-can/can-utils#basic-tools-to-display-record-generate-and-replay-can-traffic) is a set of super useful CAN debugging tools for the SocketCAN inteface. You can install it using the following command:
+[CAN-utils](https://github.com/linux-can/can-utils#basic-tools-to-display-record-generate-and-replay-can-traffic) is a set of super useful CAN debugging tools for the SocketCAN interface. You can install it using the following command:
 ```
  sudo apt-get install can-utils 
 ``` 
-This allows us to dump CAN Bus traffic to logs, send test messages and simulate random traffic. Please see the readme on their github page for more details.
+This allows us to dump CAN Bus traffic to logs, send test messages and simulate random traffic. Please see the readme on their GitHub page for more details.
 
+## Software Environment
 
-## Project Setup
-If you don't have the required hardware, fret not. You there is a way to set up a virutal CAN interface using SocketCAN and send traffic on it using CAN-utils. Navigate to [Virtual CAN Datastream Generation](#virtual-can-datastream-generation) for more information.
+### Operating System
+Connect the SSD/storage volume to a host computer. Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) to install Raspberry Pi OS on the volume. Make sure to configure SSH, network, and administrator settings before the Raspberry Pi Imager installation process. Ensure the hostname *(default: "raspberrypi")* of the device is noted. 
 
-The Python script for this project uses [pipenv](https://pipenv.pypa.io/en/latest/) to manage the required python packages, so you will need that installed. Run the following command in your root directory in the terminal: 
-```
- pip install pipenv
-```
-once you have pipenv, you can now clone this project. In the terminal, navigate to the `/pythonAPI` folder. We can now use pipenv to install all the project requirements in the pip file:
-```
- pipenv install
-```
-### Databases and Data Visualization 
-Before we can run this program, we will need to install and setup InfluxDB on the RPi. Looking at the offical documeation, 3 Series RPi's and RPi's running 32-bit operating systems aren't supported... however this seemed to work just fine [following this tutorial](https://simonhearne.com/2020/pi-influx-grafana/). The summary of the steps is as follows:
-#### InfluxDB
-First we need to update our package list and upgrade all our out of date packages. We can do this using the following terminal commands:
-```
- sudo apt update
- sudo apt upgrade -y
-```
+### Network
+The Raspberry Pi does not need to be connected to a Layer-3 (IP) communications network to function. However, it is highly recommended that it is. Without connection to a network, data egress, data visualization, and system monitoring are deeply impeded, if not impossible. 
 
-Then we can add the InfluxDB repositories to our package manager (apt). First, get the Influx signing key and verify that it's the same as the most updated one (https://www.influxdata.com/blog/linux-package-signing-key-rotation/) -- enter these one at a time:
-```
-$ wget -q https://repos.influxdata.com/influxdata-archive_compat.key
-$ gpg --with-fingerprint --show-keys ./influxdata-archive_compat.key
-```
+Raspberry Pi can connect to IP networks using WiFi or wired Ethernet. WiFi is vastly more convenient, but note that on networks with high network segregation (e.g., secured enterprise networks, like Western's), interdevice connectivity may not be possible. Hence, it is recommended that an external network is established using a router. The network does not need to be connected to the internet for DAQ use, but the DAQ **does** need an internet connection for initial software setup and updates. 
 
-Now install and update the package manager (`apt`) to use the key:
+## Software Setup
+
+**It is expected that the reader is relatively familiar with SSH and SFTP for remote access to the Raspberry Pi.** If not, please refer to the internet for a guide on connecting to a Raspberry Pi via SSH. The recommended application for development is [MobaXTerm](https://mobaxterm.mobatek.net/) on Windows, and [Royal TSX](https://www.royalapps.com/ts/mac/download) on MacOS. These applications are capable of multi-tabbed operation, so many SSH terminals and SFTP file transfer sessions may be open at a time. **The following assumes SSH and SFTP are established and accessible by the user.**
+
+### Cloning the Project
+On your own computer (Host), use Git CLI to clone the repository, or download as a zip. Duplicate `.env.example`, rename it `.env`, and edit it to add a value for the `INFLUX_PASSWORD` environment variable. Save after editing. Don't worry about the `INFLUX_TOKEN` environment variable for now.
+
+On the Raspberry Pi (RPi), create a folder in the home (`~/`) directory called `daq` with the command `mkdir ~/daq`.
+
+On Host, establish an SFTP session with RPi, and transfer the cloned repository to `~/daq/` on RPi.
+
+### Install Docker
+Follow the steps [here](https://docs.docker.com/engine/install/debian/#install-using-the-repository) to install Docker on the RPi.
+
+### Starting the Project
+On RPi, navigate to the `daq` folder with the command, `cd ~/daq`. Run the command `docker compose up -d` to build the containers required for the application, and link the containers together. 
+
+You can shut down the application by navigating to the `~/daq` folder and executing the command, `docker compose down -v`. 
+
+### Initializing InfluxDB
+First, a database bucket and an authentication token must be generated from InfluxDB. To do this:
+1. Run command, `docker exec -it wfrdaq-influxdb-1 /bin/bash`, to get command-line access to the container
+2. Set up InfluxDB by running the command: 
 ```
-$ cat influxdata-archive_compat.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg > /dev/null 
-
-$ echo 'deb [signed-by=/etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg] https://repos.influxdata.com/debian stable main' | sudo tee /etc/apt/sources.list.d/influxdata.list
+influx setup \
+    --username $INFLUX_USERNAME \
+    --password $INFLUX_PASSWORD \
+    --org $INFLUX_ORGANIZATION \
+    --bucket $INFLUX_BUCKET \
+    --force
 ```
-
-Run `sudo apt update` again, refreshing the package manager with the newly-added repo, ensuring there are no errors for the `influxdata` repository source:
+3. Get the authorization token by running the command:
 ```
-$ sudo apt update
-
-Hit:1 http://deb.debian.org/debian bullseye InRelease
-Hit:2 http://deb.debian.org/debian bullseye-updates InRelease                                                              
-Hit:3 http://security.debian.org/debian-security bullseye-security InRelease                                               
-Get:4 https://repos.influxdata.com/debian stable InRelease [6,892 B]                                                       
-Hit:5 http://archive.raspberrypi.org/debian bullseye InRelease                                                             
-Get:6 https://repos.influxdata.com/debian stable/main armhf Packages [2,547 B]
-Get:7 https://repos.influxdata.com/debian stable/main arm64 Packages [4,873 B]
-Fetched 14.3 kB in 1s (10.6 kB/s)   
-Reading package lists... Done
-Building dependency tree... Done
-Reading state information... Done
-All packages are up to date.
-
+influx auth list \
+    --user $INFLUX_USERNAME
+    --hide-headers | cut -f 3
 ```
+4. Copy the string output from step 3, and on the Host computer, paste this into `.env` as the value for `$INFLUX_TOKEN`, and save the `.env` file 
+5. From the InfluxDB command line, go back to the Pi's CLI by entering the command, `exit`
+6. Shutdown the docker project (from within the `~/daq` directory) with the command `docker compose down -v`
+7. Transfer the `.env` file with the `$INFLUX_TOKEN` environment variable from Host to `~/daq` on RPi
+8. Recompose the Docker project with `docker compose up -d`
 
-Install InfluxDB now:
-```
-sudo apt install -y influxdb
-```
+InfluxDB is now set up.
 
-Running the following starts the InfluxDB service and adds it to the list of programs to run on boot:
-```
-sudo systemctl unmask influxdb.service
-sudo systemctl start influxdb
-sudo systemctl enable influxdb.service
-```
-Once this is done, we can now use the InfluxDB client using the `influx` command. Now we can create a database as well as a user to access that database in grafana by running each of the following lines one by one **in the influx client**:
-```
-create database home
-use home
+### Initializing Grafana
 
-create user grafana with password 'Admin' with all privileges
-grant all privileges on home to grafana
-```
-We can check it worked by running `show users` in the client. That's it for influx. You can choose a different password and username, just make sure to update the `canInterface.py` file if you choose to do so. 
+1. On Host, open a web browser, and navigate to the URL, `http://raspberrypi.local:3000/`, replacing "raspberrypi" with the hostname you selected during Raspberry Pi OS installation if you changed it from the default
+2. Enter "admin" for both prompts
+3. Change the password to whatever password you chose for the `$INFLUX_PASSWORD` environment variable
+4. Click the stacked vertical bars in the top left, expand the "connections" item in the dropdown, and click "add new connection"
+5. Search "influxdb", click it, and then click the "add new data source" button 
+6. Set the URL to "http://influxdb:8086", "database" to `RaceData`, "user" to `grafana`, "password" to whatever password you set for the `$INFLUX_PASSWORD` environment variable in .env file, and "HTTP method" to `GET`
+7. Click "add custom HTTP header". For the "header" field, enter `Authorization`, and for the value field, enter `token [copy and paste the value of $INFLUX_TOKEN here]` 
+8. Click "save & test" in the bottom. You should see a box appear at the bottom of the screen that says "datasource is working. 0 measurements found" with a green checkmark on the left. This means the connection from Grafana to InfluxDB is working
+9. Click "add new connection" on the left-hand side of the page, then search for "MQTT" and click it
+10. on the MQTT data source page, click the "install" button. After installed, click the "add new datasource" button
+11. On the configuration page, for the "URL" field, enter `tcp://mqtt_broker:1883`, and click "save & test". You should get the same confirmation box in as in step 8
 
-#### Mosuitto MQTT Broker
-While having the data stored in InfluxDB is great for persistant time series data, it doesn't give truly "live" data feeds. Grafana uses database queries to grab the information to display. In order to achieve reasonable performance, the number of queries is limited to once per second. While this is perfectly fine for reviewing data, it would be nice to be able to watch the data in "real time". MQTT is a messaging protocol based on Websockets that allows for real time telemetry, so I've made it so that all sensor data is published to a [Mosquitto MQTT client](https://mosquitto.org/) as well on the RPi so that Grafana can stream it in real time. 
-**Disclaimer**: This barely works currently, it will show up for a few seconds then disapear, I'm not sure why but it's still in the script so the installation needs to be complete for things to work properly. 
+Now you can make visualizations in Grafana with MQTT and influxdb data sources. Note that MQTT topic subscription is case-sensitive. Also, topics are defined as [CAN Device Name as per DBC]/[Measurement Name], e.g. "Sensor_board_2_1/Sensor1". 
 
-
-CD to the home directory in the terminal and run:
-```
-sudo apt update && sudo apt upgrade
-```
-Then we can install the Mosquitto broker and client using:
-```
-sudo apt install -y mosquitto mosquitto-clients
-```
-Then we can make sure it runs on boot by running:
-```
-sudo systemctl enable mosquitto.service
-```
-To check that it's running we can run:
-```
-mosquitto -v
-```
-you will get some errors about the address already being in use, that's all good. 
-
-
-
-#### Grafana
-Add the packages to apt:
-```
-wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
-echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
-```
-Update package list and install
-```
-sudo apt update && sudo apt install -y grafana
-```
-Enable the service and set to start on boot:
-```
-sudo systemctl unmask grafana-server.service
-sudo systemctl start grafana-server
-sudo systemctl enable grafana-server.service
-```
-Now Grafana is installed and you can open it in the web browser by going to http://localhost:3000/ (assuming nothing else is on port 3000). The default login is `admin` for both the username and password. You can then click on the settings button, find "Data sources" and click "add new data source" to add the InfluxDB and MQTT sources. 
-
-For Influx, the support is already built in so you should be able to just search for it, and enter the following:
-
-<img src="https://user-images.githubusercontent.com/25854486/209479955-89b4b1fb-8af7-4cca-8bb7-10e547610ada.png" width="400">
-<img src="https://user-images.githubusercontent.com/25854486/209479961-64395159-d50a-4bab-9f40-582973fbbdd4.png" width="400">
-
-For MQTT you will need to add the MQTT Plugin, back on the settings button, you can click plugins and search for it in the list and install it. Once you do that, you should be able to add it as a data source as follows:
-
-<img src="https://user-images.githubusercontent.com/25854486/209480004-c10ff979-f353-449c-81c2-f594982af316.png" width="400">
-
-
-Now if you want to mess around with Grafana yourself, feel free to read the [documentation](https://grafana.com/docs/grafana/latest/) and try setting up your own dashboard, but to use the one I created for this demo, you can import the json from the `grafana_template` folder in this repository. **Note:** if importing a template before setting up data generation (whether virtual or real), you will get error triangles in Grafana indicating such. Ignore them and set up the data generation source; things will be fixed. 
-
-<img src="https://user-images.githubusercontent.com/25854486/209480115-d163f9af-2863-4ef7-b497-0a0b2e577628.png" width="400">
-
-
-***And that's it!*** Everything is setup to allow you to run the script and play with the data output in Grafana 
-
-Was this documentation over the top? yes. The goal of this project was to serve as the starting point for a more fully fleshed DAQ system, so I wanted all the setup instructions setup in 1 place to make it easier to fork and work on new versions without spending hours just trying to figure out what needs to be installed.  
-
-## Virtual CAN Datastream Generation
-If you don't have the hardware, you can still generate a reliable datastream and build a DAQ testbed, right from the comfort of your own virtual machine. This uses virtual CAN interfaces provided by the SocketCAN Linux module to mimick a physical CAN controller, combined with tools from `can-utils` to generate the datastream.  
-
-To keep this document short, see the other document: [VIRTUAL_DATASTREAM_GENERATION.md](VIRTUAL_DATASTREAM_GENERATION.md).
+### Testing Software Configuration with Virtual CAN Datastreams
+Refer to the document, [VIRTUAL_DATASTREAM_GENERATION.md](./documentation/VIRTUAL_DATASTREAM_GENERATION.md), for information about how to do this.
