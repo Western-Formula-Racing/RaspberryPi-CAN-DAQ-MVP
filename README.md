@@ -128,7 +128,7 @@ InfluxDB is now set up.
 7. Click "add custom HTTP header". For the "header" field, enter `Authorization`, and for the value field, enter `token [copy and paste the value of $INFLUX_TOKEN here]` 
 8. Click "save & test" in the bottom. You should see a box appear at the bottom of the screen that says "datasource is working. 0 measurements found" with a green checkmark on the left. This means the connection from Grafana to InfluxDB is working
 9. Click "add new connection" on the left-hand side of the page, then search for "MQTT" and click it
-10. on the MQTT data source page, click the "install" button. After installed, click the "add new datasource" button
+10. On the MQTT data source page, click the "install" button. After installed, click the "add new datasource" button
 11. On the configuration page, for the "URL" field, enter `tcp://mqtt_broker:1883`, and click "save & test". You should get the same confirmation box in as in step 8
 
 Now you can make visualizations in Grafana with MQTT and influxdb data sources. Note that MQTT topic subscription is case-sensitive. Also, topics are defined as [CAN Device Name as per DBC]/[Measurement Name], e.g. "Sensor_board_2_1/Sensor1". 

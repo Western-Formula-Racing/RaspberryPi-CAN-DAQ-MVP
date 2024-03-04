@@ -1,5 +1,5 @@
 # Virtual Datastream Generation: Condensed Version
-**The following assumes everything is set up properly, as described in [initializing_new_daq.md](../initializing_new_daq.md).**
+**The following assumes everything is set up properly, as described in [README.md](../README.md).**
 
 ### 1. Install these packages
 - `can-utils`
@@ -14,12 +14,12 @@ Run `sudo ip link add type vcan` twice. This creates two virtual CAN sockets: `v
 Run `sudo ip link set mtu 16 [interface name]` for the `vcan0` and `vcan1` interfaces. This sets the MTU to 16 bytes to replicate CAN classic's frame size.
 
 ### 4. Turn the sockets on
-Run `sudo ip link set up [interface name]` for the `vcan0` and `vcan1` interfaces. This turns sets them to a state where clients can bind to them and send data.
+Run `sudo ip link set up [interface name]` for the `vcan0` and `vcan1` interfaces. This sets them to a state where clients can bind to them and send data.
 
 ### 5. Start generating random data over the sockets
 Open two separate terminal sessions (in addition to your SSH terminal if you're doing remote access). On the first one, enter the command `cangen -I 103 -L 8 vcan0`. Nothing will happen, but your terminal is now being used by the cangen program, which is sending eight-byte-long packets (`-L 8`) with the CAN ID of `0x103` (`-I 103`). In the other terminal, enter the same command, but use an ID of `0x104` and an interface of `vcan1`. 
 
-Make sure 0x103 and 0x104 are defined in one of your DBC files in the `./pythonAPI/dbc` folder. They should be defined in the sample DBC file `sensor_boards.dbc`, with device names of `Sensor_board_2_1` and `Sensor_board_2_2` respectively. Note: the IDs in the DBC are decimal numbers (`dec(0x103) = 259`).
+Make sure devices with IDs of 0x103 and 0x104 are defined in one of your DBC files in the `./pythonAPI/dbc` folder. They should be defined in the sample DBC file `sensor_boards.dbc`, with device names of `Sensor_board_2_1` and `Sensor_board_2_2` respectively. Note: the IDs in the DBC are decimal numbers (`dec(0x103) = 259`).
 
 ### 6. Edit canInterface.py to use virtual CAN sockets instead of real ones
 Comment out the definitions of `bus_one` and `bus_two` in `canInterface.py` where `can.interface.Bus` constructors have `bitrate` parameters, and uncomment the definitions of the buses where the `channel` parameters are `vcan0` and `vcan1`. 
@@ -55,6 +55,7 @@ This verifies InfluxDB is working properly. If the system is shutdown and restar
 
 
 # Virtual CAN Datastream Generation
+**This is optional reading if you read the condensed version.**
 If you don't have the hardware, you can still generate a reliable datastream and build a DAQ testbed, right from the comfort of your own virtual machine. This uses virtual CAN interfaces provided by the SocketCAN Linux module to mimick a physical CAN controller, combined with tools from `can-utils` to generate the datastream.  
 
 ## Dependencies
