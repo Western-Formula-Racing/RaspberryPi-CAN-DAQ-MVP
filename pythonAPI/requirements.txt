@@ -1,0 +1,4 @@
+python-can==4.3.1
+influxdb-client[ciso]==1.41.0
+paho-mqtt==2.0.0
+cantools==39.4.5

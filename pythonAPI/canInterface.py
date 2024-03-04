@@ -3,24 +3,26 @@ import cantools
 import asyncio
 from typing import List
 import os
-from influxdb import InfluxDBClient
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
 import datetime
 import paho.mqtt.client as mqtt
-from can.notifier import MessageRecipient
 from pprint import pprint
 
 # influxDb config
-ifuser = "grafana"
-ifpass = "Admin"
-ifdb = "home"
-ifhost = "127.0.0.1"
-ifport = 8086
-graphName = "SensorBoard1"
-ifclient = InfluxDBClient(
-    host="127.0.0.1", port=8086, username="grafana", password="admin", database="home"
+influx_token = os.environ.get('INFLUX_TOKEN')
+influx_bucket = os.environ.get('INFLUX_BUCKET')
+influx_org = os.environ.get('INFLUX_ORGANIZATION')
+influx_url = "http://localhost:8086"
+influx_client = InfluxDBClient(
+    url = influx_url, 
+    org = influx_org,
+    token = influx_token,
+    debug = True
 )
+influx_write_api = influx_client.write_api(write_options = SYNCHRONOUS)
 
-# load DBs
+# load DBCs
 dbs = {}
 arbitration_id_to_db_name_map = {}
 for file_name in os.listdir('./dbc'):
@@ -46,16 +48,16 @@ for db_name in dbs:
 clientName = "daq"
 
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, reason_codes, properties):
     print("Connected with result code " + str(rc))
 
 
 def on_publish(client, userdata, result):
-    #print("MQTT data published")
+    print("MQTT data published")
     pass
 
 
-mqttClient = mqtt.Client(clientName)
+mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, clientName)
 mqttClient.on_connect = on_connect
 mqttClient.on_publish = on_publish
 
@@ -68,12 +70,14 @@ def decode_and_broadcast(msg: can.Message) -> None:
     db = dbs[arbitration_id_to_db_name_map[msg.arbitration_id]] # hashmap; constant lookup time 
     decoded = db.decode_message(msg.arbitration_id, msg.data)
     board_name = db.get_message_by_frame_id(msg.arbitration_id).name
-    body = [{ # I don't know why this object is an array https://influxdb-python.readthedocs.io/en/latest/examples.html
+    body = { 
         "measurement": board_name,
         "time": datetime.datetime.utcnow(),
-        "fields": decoded
-    }]
-    ifclient.write_points(body)
+        "fields": decoded,
+        "tags": {}
+    }
+    data_point = Point.from_dict(body)
+    influx_write_api.write(bucket = influx_bucket, record = data_point)
     for reading in decoded:
         mqttStr = f"{board_name}/{reading}"
         mqttClient.publish(mqttStr, decoded[reading])
@@ -113,7 +117,6 @@ filters = [
     {"can_id": 2196807698, "can_mask": 0xFFFFFFF, "extended": True}, # M112_VehicleInputs1
     {"can_id": 2196807680, "can_mask": 0xFFFFFFF, "extended": True}, # M100_VCU_States1
     {"can_id": 2196807686, "can_mask": 0xFFFFFFF, "extended": True}  # M106_DriverInputs1
-
 ]
 
 # start an interface using the socketcan interface, using the can0 physical device at a 500KHz frequency with the above filters
@@ -131,13 +134,13 @@ async def main() -> None:
     # Logger can be used to log to Influx, it just has to be made (see logic in listeners.py)
     logger = can.Logger("logfile.asc")
 
-    listeners_bus_one: List[MessageRecipient] = [
+    listeners_bus_one: List[can.notifier.MessageRecipient] = [
         decode_and_broadcast,  # Callback function
         reader_bus_one,  # AsyncBufferedReader() listener
         logger,  # Regular Listener object
     ]
 
-    listeners_bus_two: List[MessageRecipient] = [
+    listeners_bus_two: List[can.notifier.MessageRecipient] = [
         decode_and_broadcast, 
         reader_bus_two,  
         logger, 

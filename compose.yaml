@@ -3,23 +3,32 @@ services:
   influxdb:
     image: influxdb
     volumes:
-      - ./influxdb_volume:/var/lib/influxdb2
+      - ./containerization/volumes/influxdb_volume:/var/lib/influxdb2
     ports:
-      - 8086:8086
+      - 8086:8086 # Line protocol
     env_file: .env
   grafana:
     image: grafana/grafana
     user: '0' # '0 if you're running as root but otherwise find your id with id -u'
     ports:
-      - 3000:3000
+      - 3000:3000 # Web app
     volumes:
-      - ./grafana_volume:/var/lib/grafana
+      - ./containerization/volumes/grafana_volume:/var/lib/grafana
   nginx:
-    build: ./nginx/.
+    build: ./containerization/configs/nginx/.
     ports: 
-      - 80:80
+      - 80:80 # HTTP
   mqtt_broker:
     image: eclipse-mosquitto
     ports:
-      - 1883:1883
-      - 9001:9001
+      - 1883:1883 # Listener
+      - 9001:9001 # Alternate listener I think
+    volumes:
+      - ./containerization/configs/mqtt_broker/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - /mosquitto/data # Temporary volume for data
+      - /mosquitto/log # Temporary volume for logs
+  can_logger:
+    build: 
+      context: ./pythonAPI
+    env_file: .env
+    network_mode: host # So we can connect to low-level CAN sockets easily

@@ -2,7 +2,6 @@
 **
 
 # Don't ignore source code and its dependencies
-!Pipfile
-!Pipfile.lock
+!requirements.txt
 !canInterface.py
 !dbc/

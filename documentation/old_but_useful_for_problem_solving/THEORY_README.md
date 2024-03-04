@@ -1,6 +1,15 @@
+# Post-Docker Update - March 3, 2024
+**A lot of commands and configuration things here are a bit deprecated due to the pivot to Docker.** The hardware section of it is still accurate, but the software stuff as described here is not-to-be-done anymore. If you set up the software project on the host machine like this document describes, the containers won't bind properly to what they need to, and everything breaks. I think it's good to leave it here because it describes some of the intention and decisions behind the core design, and shows the system progression over the years. 
+
+Even though the process of establishing it is different now, the software architecture is practically identical to that described here. Just now some stuff is a bit more robust. Refer to the [initializing_new_daq.md](../../initializing_new_daq.md) file. 
+
+The Docker pivot was done by Brody, so @ me on Slack #software channel if any discussions are necessary.
+
 # RaspberryPi-CAN-DAQ-MVP
 A minimum viable product (MVP) to serve as a proof of concept for the intended WFR 2023 data acquisition system (DAQ) 
 ![image](https://user-images.githubusercontent.com/25854486/209480355-1d6d6520-5e73-4ade-936d-d53ffd8260fb.png)
+
+Document was mostly written by Yamaan Bakir with additions from Brody Smith over the course of Fall 2022 - Summer 2023. Core concept and initial prototypes developed by Yamaan and later models by Brody.
 
 ## Raspberry Pi setup
 ### Hardware
@@ -53,9 +62,11 @@ And that's everything to get the CAN Bus interface working! Since SocketCAN acts
 ``` 
 This allows us to dump CAN Bus traffic to logs, send test messages and simulate random traffic. Please see the readme on their github page for more details.
 
+# THE FOLLOWING IS ENTIRELY DEPRECATED
+You will run into issues 
 
-## Project Setup
-If you don't have the required hardware, fret not. You there is a way to set up a virutal CAN interface using SocketCAN and send traffic on it using CAN-utils. Navigate to [Virtual CAN Datastream Generation](#virtual-can-datastream-generation) for more information.
+~~## Project Setup
+If you don't have the required hardware, fret not. There is a way to set up a virutal CAN interface using SocketCAN and send traffic on it using CAN-utils. Navigate to [Virtual CAN Datastream Generation](#virtual-can-datastream-generation) for more information.
 
 The Python script for this project uses [pipenv](https://pipenv.pypa.io/en/latest/) to manage the required python packages, so you will need that installed. Run the following command in your root directory in the terminal: 
 ```
@@ -182,7 +193,7 @@ For MQTT you will need to add the MQTT Plugin, back on the settings button, you 
 
 Now if you want to mess around with Grafana yourself, feel free to read the [documentation](https://grafana.com/docs/grafana/latest/) and try setting up your own dashboard, but to use the one I created for this demo, you can import the json from the `grafana_template` folder in this repository. **Note:** if importing a template before setting up data generation (whether virtual or real), you will get error triangles in Grafana indicating such. Ignore them and set up the data generation source; things will be fixed. 
 
-<img src="https://user-images.githubusercontent.com/25854486/209480115-d163f9af-2863-4ef7-b497-0a0b2e577628.png" width="400">
+<img src="https://user-images.githubusercontent.com/25854486/209480115-d163f9af-2863-4ef7-b497-0a0b2e577628.png" width="400">~~
 
 
 ***And that's it!*** Everything is setup to allow you to run the script and play with the data output in Grafana 
