@@ -29,6 +29,6 @@ services:
       - /mosquitto/log # Temporary volume for logs
   can_logger:
     build: 
-      context: ./pythonAPI
+      context: ./data_logger
     env_file: .env
     network_mode: host # So we can connect to low-level CAN sockets easily

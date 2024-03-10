@@ -42,7 +42,7 @@ Finally, to enable the CAN Interface run the following in the terminal:
  sudo /sbin/ip link set can0 up type can bitrate 500000 
 ```  
 
-If you are using a different bitrate on your CAN Bus, you can change the value. You'll need to edit the declarations of `bus_one` and `bus_two` in `pythonAPI/canInterface.py` to match the new bitrate. 
+If you are using a different bitrate on your CAN Bus, you can change the value. You'll need to edit the declarations of `bus_one` and `bus_two` in `data_logger/canInterface.py` to match the new bitrate. 
 
 You will need to run this command after every reboot, however you can set it to run automatically on startup by appending the following to the `/etc/network/interfaces` file:
 ```

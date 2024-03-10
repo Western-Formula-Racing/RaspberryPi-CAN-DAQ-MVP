@@ -72,7 +72,7 @@ The Python script for this project uses [pipenv](https://pipenv.pypa.io/en/lates
 ```
  pip install pipenv
 ```
-once you have pipenv, you can now clone this project. In the terminal, navigate to the `/pythonAPI` folder. We can now use pipenv to install all the project requirements in the pip file:
+once you have pipenv, you can now clone this project. In the terminal, navigate to the `/data_logger` folder. We can now use pipenv to install all the project requirements in the pip file:
 ```
  pipenv install
 ```
