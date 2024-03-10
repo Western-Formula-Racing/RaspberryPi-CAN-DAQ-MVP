@@ -8,6 +8,8 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 import datetime
 import paho.mqtt.client as mqtt
 from pprint import pprint
+from hashlib import sha256
+from random import randbytes
 
 # influxDb config
 influx_token = os.environ.get('INFLUX_TOKEN')
@@ -44,6 +46,11 @@ for db_name in dbs:
         pprint(db.get_message_by_name(message.name).signals)
 
 
+# Generate hash to delineate data recording sessions
+session_hash = str(sha256(randbytes(32)).hexdigest())
+print("Sesssion hash: " + session_hash)
+
+
 # MQTT publisher setup
 clientName = "daq"
 
@@ -66,7 +73,6 @@ mqttClient.connect("localhost", 1883)
 
 # CAN Bus stuff
 def decode_and_broadcast(msg: can.Message) -> None:
-    #print(msg)
     db = dbs[arbitration_id_to_db_name_map[msg.arbitration_id]] # hashmap; constant lookup time 
     decoded = db.decode_message(msg.arbitration_id, msg.data)
     board_name = db.get_message_by_frame_id(msg.arbitration_id).name
@@ -74,7 +80,9 @@ def decode_and_broadcast(msg: can.Message) -> None:
         "measurement": board_name,
         "time": datetime.datetime.utcnow(),
         "fields": decoded,
-        "tags": {}
+        "tags": {
+            "session_hash": session_hash
+        }
     }
     data_point = Point.from_dict(body)
     influx_write_api.write(bucket = influx_bucket, record = data_point)
