@@ -1,6 +1,6 @@
 FROM python:3.9
 
-WORKDIR ~/data_logger
+WORKDIR ~/telemetry_api
 
 COPY requirements.txt ./
 
@@ -11,5 +11,7 @@ RUN pip install -r requirements.txt
 # the present working directory
 COPY . . 
 
+EXPOSE 5000
+
 # Run the application
-ENTRYPOINT ["python3", "canInterface.py"]
+ENTRYPOINT ["flask", "run", "--host", "0.0.0.0"]

@@ -96,6 +96,12 @@ async def blocking_reader(reader: can.AsyncBufferedReader) -> None:
         await reader.get_message()
 
 
+async def blocking_session_hash_broadcaster() -> None:
+    while True:
+        mqttClient.publish("telemetry/session_hash", session_hash)
+        await asyncio.sleep(1/10) # once per 100 ms
+
+
 filters = [
     # the mask is applied to the filter to determine which bits in the ID to check (https://forum.arduino.cc/t/filtering-and-masking-in-can-bus/586068/3)
     {"can_id": 259, "can_mask": 0xFFF, "extended": False}, # sensor board 2_1
@@ -163,6 +169,7 @@ async def main() -> None:
     await asyncio.gather(
         blocking_reader(reader_bus_one),
         blocking_reader(reader_bus_two),
+        blocking_session_hash_broadcaster()
     )
 
 

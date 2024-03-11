@@ -18,6 +18,10 @@ services:
     build: ./containerization/configs/nginx/.
     ports: 
       - 80:80 # HTTP
+    depends_on:
+      - grafana
+      - data_logger
+      - telemetry_api
   mqtt_broker:
     image: eclipse-mosquitto
     ports:
@@ -27,8 +31,15 @@ services:
       - ./containerization/configs/mqtt_broker/mosquitto.conf:/mosquitto/config/mosquitto.conf
       - /mosquitto/data # Temporary volume for data
       - /mosquitto/log # Temporary volume for logs
-  can_logger:
+  data_logger:
     build: 
       context: ./data_logger
     env_file: .env
     network_mode: host # So we can connect to low-level CAN sockets easily
+    depends_on:
+      - influxdb
+  telemetry_api:
+    build:
+      context: ./telemetry_api
+    depends_on:
+      - data_logger
