@@ -42,8 +42,7 @@ class InfluxDataRetrieval:
         device_signals = self._query_api.query(f'from(bucket: "RaceData") |> range(start: -6h) |> filter(fn: (r) => r.session_hash=="{tag}") |> group(columns: ["_measurement", "_field"])')
         if len(device_signals) < 1:
             # print an empty csv for this device (_measurement)
-            print()
-            return
+            return self._generateZip("no_data", [])
 
         this_device_name = device_signals[0].records[0].get_measurement()
         this_signal_name = ""
