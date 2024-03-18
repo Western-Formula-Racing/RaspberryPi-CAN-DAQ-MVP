@@ -65,7 +65,7 @@ This allows us to dump CAN Bus traffic to logs, send test messages and simulate 
 ## Software Environment
 
 ### Operating System
-Connect the SSD/storage volume to a host computer. Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) to install Raspberry Pi OS on the volume. Make sure to configure SSH, network, and administrator settings before the Raspberry Pi Imager installation process. Ensure the hostname *(default: "raspberrypi")* of the device is noted. 
+Connect the SSD/storage volume to a host computer. Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) to install Raspberry Pi OS on the volume. Make sure to configure SSH, network, and administrator settings before the Raspberry Pi Imager installation process. Ensure the hostname *(default: "raspberrypi")* of the device is noted **and saved to the `.env` file under the `RPI_HOSTNAME` environment variable.** 
 
 ### Network
 The Raspberry Pi does not need to be connected to a Layer-3 (IP) communications network to function. However, it is highly recommended that it is. Without connection to a network, data egress, data visualization, and system monitoring are deeply impeded, if not impossible. 
@@ -77,7 +77,7 @@ Raspberry Pi can connect to IP networks using WiFi or wired Ethernet. WiFi is va
 **It is expected that the reader is relatively familiar with SSH and SFTP for remote access to the Raspberry Pi.** If not, please refer to the internet for a guide on connecting to a Raspberry Pi via SSH. The recommended application for development is [MobaXTerm](https://mobaxterm.mobatek.net/) on Windows, and [Royal TSX](https://www.royalapps.com/ts/mac/download) on MacOS. These applications are capable of multi-tabbed operation, so many SSH terminals and SFTP file transfer sessions may be open at a time. **The following assumes SSH and SFTP are established and accessible by the user.**
 
 ### Cloning the Project
-On your own computer (Host), use Git CLI to clone the repository, or download as a zip. Duplicate `.env.example`, rename it `.env`, and edit it to add a value for the `INFLUX_PASSWORD` environment variable. Save after editing. Don't worry about the `INFLUX_TOKEN` environment variable for now.
+On your own computer (Host), use Git CLI to clone the repository, or download as a zip. Duplicate `.env.example`, rename it `.env`, and add a value for the `INFLUX_PASSWORD` environment variable. Save after editing. Don't worry about the `INFLUX_TOKEN` environment variable for now.
 
 On the Raspberry Pi (RPi), create a folder in the home (`~/`) directory called `daq` with the command `mkdir ~/daq`.
 
@@ -124,14 +124,30 @@ InfluxDB is now set up.
 3. Change the password to whatever password you chose for the `$INFLUX_PASSWORD` environment variable
 4. Click the stacked vertical bars in the top left, expand the "connections" item in the dropdown, and click "add new connection"
 5. Search "influxdb", click it, and then click the "add new data source" button 
-6. Set the URL to "http://influxdb:8086", "database" to `RaceData`, "user" to `grafana`, "password" to whatever password you set for the `$INFLUX_PASSWORD` environment variable in .env file, and "HTTP method" to `GET`
-7. Click "add custom HTTP header". For the "header" field, enter `Authorization`, and for the value field, enter `token [copy and paste the value of $INFLUX_TOKEN here]` 
+6. Set the following:
+    - Query Language: `Flux`
+    - URL: `http://influxdb:8086`
+    - User: `grafana`
+    - Password: whatever password you set for the `$INFLUX_PASSWORD` environment variable in .env file
+    - Organization: whatever organization you set for the `$INFLUX_ORGANIZATION` environment variable in .env file 
+    - Token: whatever token was generated in [Initializing InfluxDB](#initializing-influxdb)
+    - Default Bucket: `RaceData`
 8. Click "save & test" in the bottom. You should see a box appear at the bottom of the screen that says "datasource is working. 0 measurements found" with a green checkmark on the left. This means the connection from Grafana to InfluxDB is working
 9. Click "add new connection" on the left-hand side of the page, then search for "MQTT" and click it
 10. On the MQTT data source page, click the "install" button. After installed, click the "add new datasource" button
 11. On the configuration page, for the "URL" field, enter `tcp://mqtt_broker:1883`, and click "save & test". You should get the same confirmation box in as in step 8
 
-Now you can make visualizations in Grafana with MQTT and influxdb data sources. Note that MQTT topic subscription is case-sensitive. Also, topics are defined as [CAN Device Name as per DBC]/[Measurement Name], e.g. "Sensor_board_2_1/Sensor1". 
+#### Grafana Dashboards
+Now you can make visualizations in Grafana with MQTT and influxdb data sources. Note that MQTT topic subscription is case-sensitive. Also, MQTT topics are defined as [CAN Device Name as per DBC]/[Measurement Name], e.g. "Sensor_board_2_1/Sensor1". 
+
+For panels where InfluxDB is the data source, you'll need to use Flux queries to get data from the DB. Most common operations can be done by changing some values in the templates you get when selecting "sample query" in the "query" tab when creating a new panel:  
+<img src="https://github.com/Western-Formula-Racing/daq-2023/assets/70295347/988ee54d-a6a1-4b96-b74d-b40735aba74d" width="500">
+
+In the above example, the base query was "simple query", and I just changed the bucket name to our main bucket's name, the measurement name to the device I'm interested in querying, and the field I want to look at. `v.timeRange[...]` are taken from grafana's time range settings:  
+<img src="https://github.com/Western-Formula-Racing/daq-2023/assets/70295347/7ca7c7a1-02a0-48e1-ad43-9fb5f8cf25c2" width="500">
+
+The Flux language reference can be found by clicking the "Flux language syntax" button near the query field of the grafana panel addition window. **Make sure to save dashboards frequently.**
+
 
 ### Testing Software Configuration with Virtual CAN Datastreams
 Refer to the document, [VIRTUAL_DATASTREAM_GENERATION.md](./documentation/VIRTUAL_DATASTREAM_GENERATION.md), for information about how to do this.

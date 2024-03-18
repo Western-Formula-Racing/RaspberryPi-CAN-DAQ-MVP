@@ -5,7 +5,7 @@ services:
     volumes:
       - ./containerization/volumes/influxdb_volume:/var/lib/influxdb2
     ports:
-      - 8086:8086 # Line protocol
+      - 8086:8086 # Web app
     env_file: .env
   grafana:
     image: grafana/grafana
@@ -18,6 +18,8 @@ services:
     build: ./containerization/configs/nginx/.
     ports: 
       - 80:80 # HTTP
+    volumes:
+      - ./containerization/volumes/static:/www/static
     depends_on:
       - grafana
       - data_logger
@@ -41,5 +43,8 @@ services:
   telemetry_api:
     build:
       context: ./telemetry_api
+    volumes:
+      - ./containerization/volumes/static:/home/telemetry_api/static
     depends_on:
       - data_logger
+    env_file: .env

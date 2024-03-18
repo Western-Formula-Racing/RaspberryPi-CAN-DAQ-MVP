@@ -30,7 +30,7 @@ Comment out the definitions of `bus_one` and `bus_two` in `canInterface.py` wher
 Make sure the Docker project is down (from the main project directory with `compose.yaml`, run `docker compose down -v`). Delete the can_logger Docker image with `docker rmi wfrdaq-can_logger`. Compose the project again to rebuild: `docker compose up -d`.
 
 ### 8. Open Grafana in a web browser and check if the sockets work
-On a different computer connected to the same network as the Pi, navigate to `http://raspberrypi.local:3000`, login with grafana credentials, create a new dashboard, create a new visualization (click "add" button -> "visualization"), select the MQTT data source, and enter the topic `Sensor_board_2_1/Sensor1`. You might need to wait a few seconds and manually refresh the visualization with the "refresh dashboard" button in grafana a couple times before anything shows up. Change the time range to `now-20s` for best results:  
+On a different computer connected to the same network as the Pi, navigate to `http://raspberrypi.local:3000`, login with grafana credentials, create a new dashboard, create a new visualization (click "add" button -> "visualization"), select the MQTT data source, and enter the topic `Sensor_board_2_1/Sensor1`. You might need to wait a few seconds and manually refresh the visualization with the "refresh dashboard" button in grafana a couple times before anything shows up. Change the time range to "From: `now-20s`, To: `now`" for best results:  
 
 <img src="https://github.com/Western-Formula-Racing/daq-2023/assets/70295347/010f3170-2c8e-4b0b-90fe-11cc1533cf57" width="600">  
 

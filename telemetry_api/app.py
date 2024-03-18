@@ -1,10 +1,14 @@
-from flask import Flask
+import os
+from flask import Flask, redirect
 from werkzeug.middleware.proxy_fix import ProxyFix
 import influxdb_client
 import paho.mqtt.client as mqtt
 import socket
+from flask_cors import CORS
+from data_retrieval import InfluxDataRetrieval
 
 session_hash = ""
+influx_data_retrieval = InfluxDataRetrieval("http://influxdb:8086", os.getenv("INFLUX_TOKEN"), os.getenv("INFLUX_ORGANIZATION"))
 
 def on_connect(client, userdata, flags, reason_code, properties):
     print(f"Connected with result code {reason_code}")
@@ -29,6 +33,7 @@ mqttc.connect("mqtt_broker", 1883, 5)
 mqttc.loop_start()
 
 app = Flask(__name__)
+CORS(app)
 
 # Do this to tell flask's built-in server we're behind the nginx proxy
 app.wsgi_app = ProxyFix(
@@ -44,3 +49,9 @@ def connection_status():
 @app.route("/session_hash/latest", methods=['GET'])
 def current_session_hash_get():
     return { "session_hash": session_hash }
+
+
+@app.route("/race_data/all/latest", methods=['GET'])
+def all_latest_race_data_get():
+    zip_name = influx_data_retrieval.printAllDataPointsWithTagCSV(session_hash)
+    return redirect(f'http://{os.environ.get("RPI_HOSTNAME")}.local/static/{zip_name}', 303)

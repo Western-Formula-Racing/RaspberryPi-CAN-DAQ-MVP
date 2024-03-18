@@ -1,6 +1,6 @@
 FROM python:3.9
 
-WORKDIR ~/telemetry_api
+WORKDIR /home/telemetry_api
 
 COPY requirements.txt ./
 
@@ -14,4 +14,4 @@ COPY . .
 EXPOSE 5000
 
 # Run the application
-ENTRYPOINT ["flask", "run", "--host", "0.0.0.0"]
+ENTRYPOINT ["gunicorn", "-b", "0.0.0.0:5000", "-w", "4", "app:app"]
