@@ -1,0 +1,4 @@
+- Add Motec LD downloads
+- Refactor CSV generation algorithm in telemetry_api to increase speed
+- (Maybe) Add persistent socket connection from telemetry_webapp client to telemetry_api server for real-time error code checking (maybe better in Grafana -- tbd)
+- Add variable hostname support via .env in telemetry_webapp

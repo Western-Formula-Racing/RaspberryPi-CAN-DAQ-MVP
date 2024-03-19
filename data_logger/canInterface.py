@@ -8,6 +8,8 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 import datetime
 import paho.mqtt.client as mqtt
 from pprint import pprint
+from hashlib import sha256
+from random import randbytes
 
 # influxDb config
 influx_token = os.environ.get('INFLUX_TOKEN')
@@ -44,6 +46,13 @@ for db_name in dbs:
         pprint(db.get_message_by_name(message.name).signals)
 
 
+# Generate hash to delineate data recording sessions
+# Theoretically, this session hash might not generate unique values. That said, I think it's a low enough chance to
+# where that doesn't matter, especially since it's mostly being used just to get the most recent dataset
+session_hash = str(sha256(randbytes(32)).hexdigest())
+print("Sesssion hash: " + session_hash)
+
+
 # MQTT publisher setup
 clientName = "daq"
 
@@ -66,7 +75,6 @@ mqttClient.connect("localhost", 1883)
 
 # CAN Bus stuff
 def decode_and_broadcast(msg: can.Message) -> None:
-    #print(msg)
     db = dbs[arbitration_id_to_db_name_map[msg.arbitration_id]] # hashmap; constant lookup time 
     decoded = db.decode_message(msg.arbitration_id, msg.data)
     board_name = db.get_message_by_frame_id(msg.arbitration_id).name
@@ -74,7 +82,9 @@ def decode_and_broadcast(msg: can.Message) -> None:
         "measurement": board_name,
         "time": datetime.datetime.utcnow(),
         "fields": decoded,
-        "tags": {}
+        "tags": {
+            "session_hash": session_hash
+        }
     }
     data_point = Point.from_dict(body)
     influx_write_api.write(bucket = influx_bucket, record = data_point)
@@ -88,44 +98,19 @@ async def blocking_reader(reader: can.AsyncBufferedReader) -> None:
         await reader.get_message()
 
 
-filters = [
-    # the mask is applied to the filter to determine which bits in the ID to check (https://forum.arduino.cc/t/filtering-and-masking-in-can-bus/586068/3)
-    {"can_id": 259, "can_mask": 0xFFF, "extended": False}, # sensor board 2_1
-    {"can_id": 260, "can_mask": 0xFFF, "extended": False}, # sensor board 2_2
-    {"can_id": 261, "can_mask": 0xFFF, "extended": False}, # sensor board 1_1
-    {"can_id": 262, "can_mask": 0xFFF, "extended": False}, # sensor board 1_2
-    {"can_id": 2196807762, "can_mask": 0xFFFFFFF, "extended": True}, # M152_AccData2
-    {"can_id": 2196807760, "can_mask": 0xFFFFFFF, "extended": True}, # M150_AccData1
-    {"can_id": 2196807732, "can_mask": 0xFFFFFFF, "extended": True}, # M134_MotorTorqueData8
-    {"can_id": 2196807730, "can_mask": 0xFFFFFFF, "extended": True}, # M132_MotorTorqueData7
-    {"can_id": 2196807728, "can_mask": 0xFFFFFFF, "extended": True}, # M130_MotorTorqueData6
-    {"can_id": 2196807720, "can_mask": 0xFFFFFFF, "extended": True}, # M128_MotorTorqueData5
-    {"can_id": 2196807704, "can_mask": 0xFFFFFFF, "extended": True}, # M118_VehicleInputs4
-    {"can_id": 2196807702, "can_mask": 0xFFFFFFF, "extended": True}, # M116_VehicleInputs3
-    {"can_id": 2196807684, "can_mask": 0xFFFFFFF, "extended": True}, # M104_VCU_States3
-    {"can_id": 2196807744, "can_mask": 0xFFFFFFF, "extended": True}, # M140_MotorSpeedData3
-    {"can_id": 2196807748, "can_mask": 0xFFFFFFF, "extended": True}, # M144_VCU_FaultStates1
-    {"can_id": 2196807682, "can_mask": 0xFFFFFFF, "extended": True}, # M102_VCU_States2
-    {"can_id": 2196807688, "can_mask": 0xFFFFFFF, "extended": True}, # M108_DriverInputs2
-    {"can_id": 2196807700, "can_mask": 0xFFFFFFF, "extended": True}, # M114_VehicleInputs2
-    {"can_id": 2196807736, "can_mask": 0xFFFFFFF, "extended": True}, # M138_MotorSpeedData2
-    {"can_id": 2196807734, "can_mask": 0xFFFFFFF, "extended": True}, # M136_MotorSpeedData1
-    {"can_id": 2196807718, "can_mask": 0xFFFFFFF, "extended": True}, # M126_MotorTorqueData4
-    {"can_id": 2196807716, "can_mask": 0xFFFFFFF, "extended": True}, # M124_MotorTorqueData3
-    {"can_id": 2196807714, "can_mask": 0xFFFFFFF, "extended": True}, # M122_MotorTorqueData2
-    {"can_id": 2196807712, "can_mask": 0xFFFFFFF, "extended": True}, # M120_MotorTorqueData1
-    {"can_id": 2196807698, "can_mask": 0xFFFFFFF, "extended": True}, # M112_VehicleInputs1
-    {"can_id": 2196807680, "can_mask": 0xFFFFFFF, "extended": True}, # M100_VCU_States1
-    {"can_id": 2196807686, "can_mask": 0xFFFFFFF, "extended": True}  # M106_DriverInputs1
-]
+async def blocking_session_hash_broadcaster() -> None:
+    while True:
+        mqttClient.publish("telemetry/session_hash", session_hash)
+        await asyncio.sleep(1/10) # once per 100 ms
 
-# start an interface using the socketcan interface, using the can0 physical device at a 500KHz frequency with the above filters
-# bus_one = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=500000, can_filters=filters) # BMS CAN network bus
-# bus_two = can.interface.Bus(bustype='socketcan', channel='can1', bitrate=500000, can_filters=filters) # Inverter CAN network bus
+# Note: if the physical buses don't produce anything even though they should, add CAN filtering 
+# Start an interface using the socketcan interface, using the can0 physical device at a 500KHz frequency with the above filters
+# bus_one = can.interface.Bus(bustype='socketcan', channel='can0', bitrate=500000) # BMS CAN network bus
+# bus_two = can.interface.Bus(bustype='socketcan', channel='can1', bitrate=500000) # Inverter CAN network bus
 
 # Use the virtual CAN interface in lieu of a physical connection
-bus_one = can.interface.Bus(bustype="socketcan", channel="vcan0", filter=filters[0])
-bus_two = can.interface.Bus(bustype="socketcan", channel="vcan1", filter=filters[1])
+bus_one = can.interface.Bus(bustype="socketcan", channel="vcan0")
+bus_two = can.interface.Bus(bustype="socketcan", channel="vcan1")
 
 async def main() -> None:
     reader_bus_one = can.AsyncBufferedReader()
@@ -155,6 +140,7 @@ async def main() -> None:
     await asyncio.gather(
         blocking_reader(reader_bus_one),
         blocking_reader(reader_bus_two),
+        blocking_session_hash_broadcaster()
     )
 
 

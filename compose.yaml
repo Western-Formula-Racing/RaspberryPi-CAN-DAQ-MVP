@@ -5,7 +5,7 @@ services:
     volumes:
       - ./containerization/volumes/influxdb_volume:/var/lib/influxdb2
     ports:
-      - 8086:8086 # Line protocol
+      - 8086:8086 # Web app
     env_file: .env
   grafana:
     image: grafana/grafana
@@ -18,6 +18,12 @@ services:
     build: ./containerization/configs/nginx/.
     ports: 
       - 80:80 # HTTP
+    volumes:
+      - ./containerization/volumes/static:/www/static
+    depends_on:
+      - grafana
+      - data_logger
+      - telemetry_api
   mqtt_broker:
     image: eclipse-mosquitto
     ports:
@@ -27,8 +33,25 @@ services:
       - ./containerization/configs/mqtt_broker/mosquitto.conf:/mosquitto/config/mosquitto.conf
       - /mosquitto/data # Temporary volume for data
       - /mosquitto/log # Temporary volume for logs
-  can_logger:
+  data_logger:
     build: 
-      context: ./pythonAPI
+      context: ./data_logger
     env_file: .env
     network_mode: host # So we can connect to low-level CAN sockets easily
+    depends_on:
+      - influxdb
+  telemetry_api:
+    build:
+      context: ./telemetry_api
+    volumes:
+      - ./containerization/volumes/static:/home/telemetry_api/static
+    depends_on:
+      - data_logger
+    env_file: .env
+  telemetry_webapp: 
+    build:
+      context: ./telemetry_webapp
+    depends_on:
+      - telemetry_api
+    ports:
+      - 8080:8080

@@ -1,6 +1,6 @@
 FROM python:3.9
 
-WORKDIR ~/pythonAPI
+WORKDIR /home/telemetry_api
 
 COPY requirements.txt ./
 
@@ -11,5 +11,7 @@ RUN pip install -r requirements.txt
 # the present working directory
 COPY . . 
 
+EXPOSE 5000
+
 # Run the application
-ENTRYPOINT ["python3", "canInterface.py"]
+ENTRYPOINT ["gunicorn", "-b", "0.0.0.0:5000", "-w", "4", "app:app"]
