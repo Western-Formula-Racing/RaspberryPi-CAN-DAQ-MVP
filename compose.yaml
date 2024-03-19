@@ -48,3 +48,10 @@ services:
     depends_on:
       - data_logger
     env_file: .env
+  telemetry_webapp: 
+    build:
+      context: ./telemetry_webapp
+    depends_on:
+      - telemetry_api
+    ports:
+      - 8080:8080

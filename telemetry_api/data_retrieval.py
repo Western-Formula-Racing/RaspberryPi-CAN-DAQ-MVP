@@ -34,6 +34,12 @@ class InfluxDataRetrieval:
         for file_name in file_names:
             os.remove(file_name)
 
+    # Currently this is pretty slow when there's a lot of data. A method of increasing the speed is to 
+    # use multithreading: find out how many devices (measurements) there are first, spawn threads for each measurement,
+    # transform and write all points to a CSV for each signal on that device, have a running consumer thread that zips
+    # each file upon completion, close the zip after all CSV-writing threads finish, and return the name. Still probably will
+    # take a while, but less time. Maybe consider query optimization also so influx formats the data in the most congruent form for CSV
+    # writing, as I think most of the time comes from that processing portion.  
     def printAllDataPointsWithTagCSV(self, tag) -> str:
         # each MEASUREMENT (i.e., CAN device) will have an equal number of datapoints for all devices (CAN signals), 
         # because each datapoint represents a segment of a single CAN frame. On that CAN frame, there will always be values
@@ -41,7 +47,7 @@ class InfluxDataRetrieval:
 
         device_signals = self._query_api.query(f'from(bucket: "RaceData") |> range(start: -6h) |> filter(fn: (r) => r.session_hash=="{tag}") |> group(columns: ["_measurement", "_field"])')
         if len(device_signals) < 1:
-            # print an empty csv for this device (_measurement)
+            # return an empty zip file when no data is present
             return self._generateZip("no_data", [])
 
         this_device_name = device_signals[0].records[0].get_measurement()

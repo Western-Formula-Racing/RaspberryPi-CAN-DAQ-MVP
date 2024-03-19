@@ -148,6 +148,14 @@ In the above example, the base query was "simple query", and I just changed the 
 
 The Flux language reference can be found by clicking the "Flux language syntax" button near the query field of the grafana panel addition window. **Make sure to save dashboards frequently.**
 
+### DAQ User Interface
+The DAQ user interface is provided by a web application, which can be accessed from a computer attached to the same network as the Raspberry Pi. On a web browser, enter the URL: `http://[hostname].local`. If the Raspberry Pi's hostname as selected in the Raspberry Pi Imager is `raspberrypi`, the link is [http://raspberrypi.local](http://raspberrypi.local). As long as the Docker project is composed, you'll be able to access the site. It will look like this:  
+
+<img src="https://github.com/Western-Formula-Racing/daq-2023/assets/70295347/a7f3740e-2d41-49f7-a55e-c6861e5aff2f" width="500">  
+
+The UI is self-explanatory. The webpage refreshes once every minute to update the session hash to make sure it's reflective of the current state.  
+
+Currently, CSVs are the only download method. Motec LD downloads will be added in the near future.  
 
 ### Testing Software Configuration with Virtual CAN Datastreams
 Refer to the document, [VIRTUAL_DATASTREAM_GENERATION.md](./documentation/VIRTUAL_DATASTREAM_GENERATION.md), for information about how to do this.
