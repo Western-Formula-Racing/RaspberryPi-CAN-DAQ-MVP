@@ -2,3 +2,4 @@
 - Refactor CSV generation algorithm in telemetry_api to increase speed
 - (Maybe) Add persistent socket connection from telemetry_webapp client to telemetry_api server for real-time error code checking (maybe better in Grafana -- tbd)
 - Add variable hostname support via .env in telemetry_webapp
+- Switch SimpleCSS from CDN-hosted to bundled NPM in telemetry_webapp (https://github.com/kevquirk/simple.css/wiki/Getting-Started-With-Simple.css#option-3---install-from-npm)
