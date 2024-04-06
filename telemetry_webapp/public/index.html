@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="refresh" content="60">
-    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+    <link rel="stylesheet" href="simple.min.css">
     <title>WFR DAQ</title>
 </head>
 
@@ -46,8 +46,8 @@
                     sessions have already been downloaded.</p>
             </header>
             <p>
-                <input type="button" value="Download CSV" onclick="downloadCsv()" />
-                <input type="button" value="Download Motec LD+LDX" disabled />
+                <input type="button" value="Download CSV" onclick="download('csv')" />
+                <input type="button" value="Download Motec LD" onclick="download('motec')" />
                 <dialog id="loading-dialog">
                     <h1 id="loading-dialog-label">Downloading</h1>
                 </dialog>
