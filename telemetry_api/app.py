@@ -51,7 +51,15 @@ def current_session_hash_get():
     return { "session_hash": session_hash }
 
 
-@app.route("/race_data/all/latest", methods=['GET'])
-def all_latest_race_data_get():
-    zip_name = influx_data_retrieval.printAllDataPointsWithTagCSV(session_hash)
+@app.route("/race_data/all/latest/<format>", methods=['GET'])
+def all_latest_race_data_get_csv(format = None):
+    if format != "csv" and format != "motec": 
+        return 'Invalid file format', 400
+
+    if format == "csv":
+        zip_name = influx_data_retrieval.writeAllDataPointsWithTagCSV(session_hash)
+    elif format == "motec":
+        zip_name = influx_data_retrieval.writeAllDataPointsWithTagMotec(session_hash)
+    
     return redirect(f'http://{os.environ.get("RPI_HOSTNAME")}.local/static/{zip_name}', 303)
+

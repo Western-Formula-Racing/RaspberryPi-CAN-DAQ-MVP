@@ -1,6 +1,9 @@
 # WFR Data Acquisition System
 This repository stores the code and other software resources defining the WFR Data Acquisition System (DAQ). 
 
+## Key Assumption
+A key assumption with the system is that it exists connected to a secure network. If not, disabling the WiFi adapter on the Pi and reverting to Ethernet only as a means of connecting to the DAQ is advised.
+
 ## Hardware Setup
 For hardware setup, please refer to the following excerpt from [THEORY_README.md](./documentation/old_but_useful_for_problem_solving/THEORY_README.md): 
 
@@ -159,3 +162,6 @@ Currently, CSVs are the only download method. Motec LD downloads will be added i
 
 ### Testing Software Configuration with Virtual CAN Datastreams
 Refer to the document, [VIRTUAL_DATASTREAM_GENERATION.md](./documentation/VIRTUAL_DATASTREAM_GENERATION.md), for information about how to do this.
+
+### Motec Conversion
+Motec log generator was originally written by stevendaniluk and is available here: https://github.com/stevendaniluk/MotecLogGenerator. 

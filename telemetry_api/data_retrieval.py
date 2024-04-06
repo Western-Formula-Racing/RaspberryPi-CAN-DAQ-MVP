@@ -3,6 +3,9 @@ import csv
 import zipfile
 import os
 
+from motec_conversion.data_log import DataLog
+from motec_conversion.motec_log import MotecLog
+
 class InfluxDataRetrieval:
     def __init__(self, url, token, org):
         self._influx_client = InfluxDBClient(url=url, token=token, org=org)
@@ -34,13 +37,8 @@ class InfluxDataRetrieval:
         for file_name in file_names:
             os.remove(file_name)
 
-    # Currently this is pretty slow when there's a lot of data. A method of increasing the speed is to 
-    # use multithreading: find out how many devices (measurements) there are first, spawn threads for each measurement,
-    # transform and write all points to a CSV for each signal on that device, have a running consumer thread that zips
-    # each file upon completion, close the zip after all CSV-writing threads finish, and return the name. Still probably will
-    # take a while, but less time. Maybe consider query optimization also so influx formats the data in the most congruent form for CSV
-    # writing, as I think most of the time comes from that processing portion.  
-    def printAllDataPointsWithTagCSV(self, tag) -> str:
+    # Return a tuple containing the last_time of measurement, and the file_names of all generated CSVs 
+    def _generateAllDataPointsCSV(self, tag) -> (str, list[str]):
         # each MEASUREMENT (i.e., CAN device) will have an equal number of datapoints for all devices (CAN signals), 
         # because each datapoint represents a segment of a single CAN frame. On that CAN frame, there will always be values
         # for all other signals
@@ -76,7 +74,54 @@ class InfluxDataRetrieval:
                     rows[time] = [signal_datapoint.get_value()]
         
         file_names.append(self._writeToCsv(this_device_name, header, rows)) # handle the last device
-        zip_name = self._generateZip(device_signals[0].records[0].get_stop(), file_names)
+        return device_signals[0].records[0].get_stop(), file_names
+
+    # Currently this is pretty slow when there's a lot of data. A method of increasing the speed is to 
+    # use multithreading: find out how many devices (measurements) there are first, spawn threads for each measurement,
+    # transform and write all points to a CSV for each signal on that device, have a running consumer thread that zips
+    # each file upon completion, close the zip after all CSV-writing threads finish, and return the name. Still probably will
+    # take a while, but less time. Maybe consider query optimization also so influx formats the data in the most congruent form for CSV
+    # writing, as I think most of the time comes from that processing portion.  
+    def writeAllDataPointsWithTagCSV(self, tag) -> str:
+        last_time, file_names = self._generateAllDataPointsCSV(tag)
+        zip_name = self._generateZip(last_time, file_names)
         self._deleteFiles(file_names)
         return zip_name
 
+    def writeAllDataPointsWithTagMotec(self, tag) -> str: 
+        last_time, file_names = self._generateAllDataPointsCSV(tag)
+        i = 0
+        for file_name in file_names:
+            with open(file_name, "r") as f:
+                lines = f.readlines()
+
+            # Set the data log object
+            data_log = DataLog()
+            data_log.from_csv_log(lines)
+            data_log.resample(20.0) # experimental value in Hz I think
+            
+            # Set metadata fields for the motec log object
+            motec_log = MotecLog()
+            motec_log.driver = "Maybe Samya?"
+            motec_log.vehicle_id = "WFR24"
+            motec_log.vehicle_weight = 0
+            motec_log.vehicle_type = "FSAE"
+            motec_log.vehicle_comment = "Built with Love"
+            motec_log.venue_name = ""
+            motec_log.event_name = ""
+            motec_log.event_session = ""
+            motec_log.long_comment = ""
+            motec_log.short_comment = ""
+
+            motec_log.initialize()
+            motec_log.add_all_channels(data_log)
+            
+            # Save the motec log
+            ld_filename = os.path.join(file_name[0:-3] + "ld") # "./blahblah.csv" -> "./blahblah.ld"
+            file_names[i] = ld_filename
+            i += 1
+            motec_log.write(ld_filename)
+
+        zip_name = self._generateZip(last_time, file_names)
+        self._deleteFiles(file_names)
+        return zip_name

@@ -12,22 +12,25 @@ async function setSessionHash() {
     sessionHashSpan.innerText = `Session hash: ${sessionHash}`;
 };
 
-async function downloadCsv() {
+async function download(format) {
     document.getElementById("loading-dialog").showModal();
     try {
-        const responseUrl = await fetch(
-            `http://raspberrypi.local/api/v1/race_data/all/latest`,
+        const response = await fetch(
+            `http://raspberrypi.local/api/v1/race_data/all/latest/${format}`,
             {
                 method: "GET"
             }
-        ).then((r) => r.redirected ? r.url : "");
-    
-        if (responseUrl !== "") {
-            window.open(responseUrl, '_blank');
+        );
+            
+        if (response.redirected) {
+            window.open(response.url, '_blank');
+            document.getElementById("loading-dialog").close();
+        } else {
+            document.getElementById("loading-dialog-label").innerText = `HTTP Error${response.status ? ` ${response.status}` : ""}. Check console`;
+            console.log(response);
         }
-        document.getElementById("loading-dialog").close();
     } catch (err) {
-        document.getElementById("loading-dialog-label").innerText = "Error! Check console";
+        document.getElementById("loading-dialog-label").innerText = "Fetch Error! Check console";
         console.log(err);
     }
 }
