@@ -165,3 +165,41 @@ Refer to the document, [VIRTUAL_DATASTREAM_GENERATION.md](./documentation/VIRTUA
 
 ### Motec Conversion
 Motec log generator was originally written by stevendaniluk and is available here: https://github.com/stevendaniluk/MotecLogGenerator. 
+
+## External SSD
+1. Connect SSD to pi
+2. Do command lsblk and find the appropriate device/part that corresponds to your external SSD. Mine had the disk name "UNTITLED" here:  
+
+<img src="https://github.com/Western-Formula-Racing/daq-2023/assets/70295347/565edff4-68ae-472f-9c12-585c70d25e4c" width="200">  
+
+3. Reformat the disk: sudo mkfs -t ext4 /dev/sda1. If it's mounted, unmount it with umount /dev/sda1, then try the mkfs command again  
+
+4. Do lsblk -f, find and note the UUID
+
+<img src="https://github.com/Western-Formula-Racing/daq-2023/assets/70295347/0fdf0884-22c3-4aa8-ad7e-653d8f1a6039" width="500">  
+
+5. Edit fstab to automatically mount the disk if it's available at boot with sudo nano /etc/fstab. Add the line: 
+
+UUID=[uuid from step 4] /home/pi/daq-2023 ext4 defaults,nofail 0 0  
+
+6. Make the daq-2023 folder with mkdir /home/pi/daq-2023
+
+7. Reload fstab config with sudo systemctl daemon-reload  
+
+8. Mount the drive with sudo mount /dev/sda1 /home/pi/daq-2023  
+
+9. Change the ownership of the mountpoint with sudo chown pi /home/pi/daq-2023  
+
+10. Go into daq-2023 directory with cd /home/pi/daq-2023, and then create a test document with touch test.txt. You should be able to do this without the sudo command
+
+11. Add content to the test document with nano test.txt, type something, and then save with ctrl+s. 
+
+12. Reboot the pi to test that A. the SSD is automounted, and B. that the test.txt file has the same contents as before. Reboot with sudo shutdown -r now  
+
+13. When the pi boots up again, cd back into /home/pi/daq-2023, and do nano test.txt to make sure the file exists and that it has the same content as before. This verifies the addition of an externally mounted SSD and a correct fstab config. 
+
+14. Clone the daq-2023 GitHub repository into the /home/pi/daq-2023 folder with git clone https://github.com/Western-Formula-Racing/daq-2023.git 
+
+15. A new folder is created inside /home/pi/daq-2023, also called daq-2023
+
+If booting with an SSD that does not have its filesystem UUID entered in the fstab configuration, or if no SSD is connected, the Raspberry Pi will still boot properly because of the nofail option we had in the fstab config. The DAQ software will not run, assuming the DAQ software is stored on the SSD. Follow the above steps with your new SSD to get it working properly.
