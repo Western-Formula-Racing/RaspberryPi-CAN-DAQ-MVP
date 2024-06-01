@@ -37,13 +37,28 @@ Finally, to enable the CAN Interface run the following in the terminal:
 ```
  sudo /sbin/ip link set can0 up type can bitrate 500000 
 ```
-If you are using a different bitrate on your CAN Bus, you can change the value. You will need to run this command after every reboot, however you can set it to run automatically on startup by appending the following to the `/etc/netwrok/interfaces` file:
+If you are using a different bitrate on your CAN Bus, you can change the value. You will need to run this command after every reboot, however you can set it to run automatically on startup by appending the following to the `/etc/network/interfaces` file:
 ```
 auto can0
 iface can0 inet manual
     pre-up /sbin/ip link set can0 type can bitrate 500000 triple-sampling on restart-ms 100
     up /sbin/ifconfig can0 up
     down /sbin/ifconfig can0 down
+```
+
+if you are using a dual CAN hat:
+```
+auto can0
+iface can0 inet manual
+    pre-up /sbin/ip link set can0 type can bitrate 500000 triple-sampling on restart-ms 100
+    up /sbin/ifconfig can0 up
+    down /sbin/ifconfig can0 down
+
+auto can1
+iface can1 inet manual
+    pre-up /sbin/ip link set can1 type can bitrate 500000 triple-sampling on restart-ms 100
+    up /sbin/ifconfig can1 up
+    down /sbin/ifconfig can1 down
 ```
 And that's everything to get the CAN Bus interface working! Since SocketCAN acts like a regular network device, we can get some statistic information by using the `ifconfig` terminal command. 
 #### CAN-utils
